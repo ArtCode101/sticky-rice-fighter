@@ -1,0 +1,29 @@
+frontend:
+  runtime:
+    name: Node.js
+    version: "24"
+  framework:
+    name: Next.js
+    version: "16"
+  libraries:
+    - name: Tailwind CSS
+      version: null
+    - name: MUI
+      version: null
+
+backend:
+  language:
+    name: Java
+    version: "25"
+  framework:
+    name: Spring Boot
+    version: "4.1.x"
+  dependencies: []  # TODO: not specified yet
+
+database:
+  - name: PostgreSQL
+    version: "16"
+
+messaging:
+  - name: Kafka
+    version: "4"
