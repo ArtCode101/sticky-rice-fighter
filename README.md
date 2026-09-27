@@ -23,6 +23,10 @@ definitions. No product code is ever written here.
 │   ├── tech-stack.yaml        # fixed languages, frameworks, libraries, versions
 │   ├── workspace/             # workspace manifest schema and template
 │   ├── requirement/           # release and screen spec templates, locking rules
+│   ├── local-env/             # dependency containers for the develop phase
+│   ├── local-run/             # running backend, frontend and Nginx on the host
+│   ├── nginx/                 # the mandatory frontend-to-backend gateway
+│   ├── tools/                 # the only sanctioned datastore access path
 │   ├── deployment/            # deploy layout and local deploy template
 │   ├── config/                # config layout and key-pair rules
 │   ├── database/              # PostgreSQL knowledge and compose template
@@ -76,6 +80,26 @@ Coding Agent x N            --->  one per repository, in parallel
 release runs on local Docker host                     <- the only other check
 ```
 
+## Developing versus finishing
+
+These two look similar and are not the same thing.
+
+| | Develop phase | Definition of done |
+|---|---|---|
+| Dependencies | containers, per workspace, started by any agent that needs them | containers, from the deployment repository |
+| Backend, frontend, batch, listeners | host processes | Docker containers |
+| Nginx | host process | Docker container |
+| Datastore access | Python tools, full privileges, local only | — |
+| Purpose | see the code work while writing it | finish the release |
+| Verified by | the agent looking at it | `preflight/done-check.sh` |
+
+An agent may start, stop and poke at the develop phase as much as it likes. None of
+it finishes a release. Only a Docker deploy that `done-check.sh` passes does.
+
+Dependency containers belong to one workspace, are namespaced by `WORKSPACE_NAME`,
+and stay up across releases. Data survives `local-env.sh down`; only
+`local-env.sh destroy --yes`, which the human asks for, deletes it.
+
 ## The two checkpoints
 
 1. The human approves the requirement analysis, once, before any code is written.
@@ -99,6 +123,12 @@ be edited again.
   no Docker image uses the `latest` tag.
 - Login is username and password. Tokens are JWT signed with RS256 only, with one
   RSA key pair per authentication group.
+- The frontend calls the backend through **Nginx only**, while developing and when
+  deployed.
+- Agents reach PostgreSQL, Kafka and Redis through the **Python tools** in the
+  workspace's `tool` repository and nothing else, against a **local** host only.
+- Every batch job and every listener gets its own repository, with its
+  responsibility written down.
 - All framework content and all generated artifacts are written in English.
 
 Start with `AGENTS.md` for the full rules, then `agents/AGENTS.md` for the flow.

@@ -48,13 +48,20 @@ knowledge templates, not from scratch:
 - `knowledge/database/templates/docker-compose.yml`
 - `knowledge/redis/templates/docker-compose.yml`
 - `knowledge/kafka/templates/docker-compose.yml`
+- `knowledge/nginx/templates/docker-compose.yml`
+
+The Nginx service is required whenever the release has both a frontend and a
+backend: the frontend reaches the backend through Nginx only. Unlike the develop
+phase, where Nginx runs as a host process, here it is a container like the rest, and
+its upstreams are compose service names.
 
 AI agents should:
 
 - Reuse those templates as-is, keeping the pinned image versions, health checks,
   volumes, ports and restart policies.
 - Read every configuration value from the `config` repository.
-- Verify a local deploy with `preflight/done-check.sh`.
+- Verify a local deploy with `preflight/done-check.sh`, passing
+  `--gateway <url>` whenever the release has a frontend.
 
 AI agents must not:
 
