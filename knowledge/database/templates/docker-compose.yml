@@ -1,7 +1,21 @@
+# Workspace-scoped local environment service.
+#
+# This file is materialized into a workspace and belongs to that workspace alone.
+# Containers, networks and volumes are never shared between workspaces.
+#
+# Required:
+#   WORKSPACE_NAME - names the container. The compose command must also pass
+#                    -p "$WORKSPACE_NAME" so the project's networks and volumes
+#                    are namespaced per workspace.
+#
+# Ports come from the workspace's config repository. When two workspaces run on
+# the same machine, give each one different port values: compose cannot compute
+# an offset by itself.
+
 services:
   postgres:
     image: postgres:16.15
-    container_name: ${POSTGRES_CONTAINER_NAME:-art-postgres}
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-postgres
 
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-artdb}

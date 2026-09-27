@@ -1,7 +1,21 @@
+# Workspace-scoped local environment service.
+#
+# This file is materialized into a workspace and belongs to that workspace alone.
+# Containers, networks and volumes are never shared between workspaces.
+#
+# Required:
+#   WORKSPACE_NAME - names the container. The compose command must also pass
+#                    -p "$WORKSPACE_NAME" so the project's networks and volumes
+#                    are namespaced per workspace.
+#
+# Ports come from the workspace's config repository. When two workspaces run on
+# the same machine, give each one different port values: compose cannot compute
+# an offset by itself.
+
 services:
   redis:
     image: redis:8.2
-    container_name: ${REDIS_CONTAINER_NAME:-art-redis}
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-redis
 
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-artpassword}"]
 

@@ -9,7 +9,7 @@
 #
 # Default is "working" so the framework stays protected unless it is explicitly
 # opened for editing.
-mode: working
+mode: edit
 
 # Release execution mode.
 #

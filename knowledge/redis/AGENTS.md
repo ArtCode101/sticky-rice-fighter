@@ -40,3 +40,20 @@ AI agents must not:
 ```text
 redis:8.2
 ```
+
+## Workspace scoping
+
+Containers started from this template belong to **one workspace** and are that
+project's own local environment. They are never shared between workspaces.
+
+- `WORKSPACE_NAME` is required. It names the container, for example
+  `<workspace>-redis`.
+- The compose command must pass `-p "$WORKSPACE_NAME"` so networks and named
+  volumes are namespaced per workspace.
+- Ports come from the workspace's `config` repository. Two workspaces running at
+  the same time must be given different port values.
+
+AI agents must not:
+
+- Reuse a container, network or volume from another workspace.
+- Fall back to a global container name.
