@@ -77,6 +77,25 @@ Raw requirement input from the human may arrive in any language. The Requirement
 Analysis Agent must produce its output in English regardless of the input
 language.
 
+## Release execution mode
+
+Also in `flag.yml`:
+
+```yaml
+release_execution: manual   # or: auto
+```
+
+| Value | Behavior after a release is locked |
+|---|---|
+| `manual` | Stop. The human clicks through the running system and explicitly continues to the next release. |
+| `auto` | Continue to the next `draft` release immediately, until none is left. |
+
+Releases always run one at a time in ascending release number, in both modes. The
+mode only decides whether the human is asked before the next one starts.
+
+Only the human sets this value. Agents read it and must never write it, in either
+operating mode.
+
 ## Mode guard
 
 Script:

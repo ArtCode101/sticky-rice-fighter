@@ -10,3 +10,15 @@
 # Default is "working" so the framework stays protected unless it is explicitly
 # opened for editing.
 mode: working
+
+# Release execution mode.
+#
+# manual - After a release is locked, stop. The human clicks through the running
+#          system and explicitly continues to the next release.
+#
+# auto   - Continue to the next release as soon as the previous one is locked,
+#          until no draft release is left.
+#
+# Only the human changes this value. Agents read it and must never write it.
+# Default is "manual" so nothing runs ahead unattended.
+release_execution: manual
