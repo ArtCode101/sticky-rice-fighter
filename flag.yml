@@ -1,0 +1,12 @@
+# Framework operating mode.
+#
+# edit    - The framework author (human) may modify any file in this repository:
+#           knowledge, agent context, prompts, rules, manifests and scripts.
+#
+# working - The framework is locked. No agent may modify ANY file in this
+#           repository, for any reason. Agents may only read this repository and
+#           act on the external workspace pointed to by WORKSPACE_PATH in .env.
+#
+# Default is "working" so the framework stays protected unless it is explicitly
+# opened for editing.
+mode: working
