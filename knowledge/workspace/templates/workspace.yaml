@@ -1,0 +1,50 @@
+# Workspace manifest.
+#
+# Lists every repository that belongs to this workspace, its type, and the phase
+# in which it is created. The Workspace Init Agent reads this file and creates
+# the repositories in phase order.
+#
+# This file lives in the workspace (at WORKSPACE_PATH), not in the framework
+# repository, because it grows as new repositories are identified.
+
+workspace:
+  name: my-workspace
+
+repos:
+  # --- Phase 1: no dependencies, created immediately -----------------------
+  - name: my-workspace-registry
+    type: registry
+    phase: 1
+    remote: null
+
+  - name: my-workspace-requirement
+    type: requirement
+    phase: 1
+    remote: null
+
+  # Created empty. Deploy scripts are added later.
+  - name: my-workspace-deployment
+    type: deployment
+    phase: 1
+    remote: null
+
+  # Created empty. Configuration is added later.
+  - name: my-workspace-config
+    type: config
+    phase: 1
+    remote: null
+
+  # --- Phase 2: appended by the Requirement Analysis Agent ----------------
+  # Backend repositories are split by domain.
+  # Frontend repositories are split by user group, for example a separate admin
+  # portal and general-user site.
+  #
+  # - name: my-workspace-backend-<domain>
+  #   type: backend
+  #   phase: 2
+  #   remote: null
+  #
+  # - name: my-workspace-frontend-<user-group>
+  #   type: frontend
+  #   phase: 2
+  #   remote: null
