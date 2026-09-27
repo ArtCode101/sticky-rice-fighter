@@ -51,6 +51,8 @@ backend:
       version: "4.1.1"
     - name: "postgresql"
       version: "42.7.10"
+    - name: "spring-boot-starter-flyway"
+      version: "4.1.1"
     - name: "spring-boot-starter-kafka"
       version: "4.1.1"
     - name: "spring-kafka"
