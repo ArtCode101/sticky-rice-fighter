@@ -4,6 +4,7 @@
 #   1. Java 25
 #   2. Node.js 24
 #   3. Docker
+#   4. Python 3
 #
 set -u
 
@@ -55,6 +56,20 @@ if command -v docker >/dev/null 2>&1; then
     fi
 else
     fail "Docker not found in PATH"
+fi
+
+# 4. Python 3.13 (fixed version, used for Playwright and tooling)
+REQUIRED_PYTHON="3.13"
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_VERSION_RAW="$(python3 --version 2>&1)"
+    PYTHON_MINOR_VERSION="$(echo "$PYTHON_VERSION_RAW" | sed -E 's/^Python ([0-9]+\.[0-9]+).*/\1/')"
+    if [ "$PYTHON_MINOR_VERSION" = "$REQUIRED_PYTHON" ]; then
+        pass "Python $REQUIRED_PYTHON detected ($PYTHON_VERSION_RAW)"
+    else
+        fail "Python $REQUIRED_PYTHON required, found: $PYTHON_VERSION_RAW"
+    fi
+else
+    fail "Python 3 not found in PATH"
 fi
 
 echo "-----------------------------------"

@@ -104,6 +104,27 @@ messaging:
   - name: Kafka
     version: "4"
 
+testing:
+  language:
+    name: Python
+    version: "3.13"  # fixed version, used for Playwright
+  tools:
+    - name: Playwright
+      version: "1.63.0"
+internal:
+  language:
+    name: Python
+    version: "3.13"  # fixed version, Internal tooling
+  tools:
+    - name: psycopg
+      version: "3.2.4"
+    - name: confluent-kafka
+      version: "2.6.1"
+    - name: redis
+      version: "5.2.1"
+    - name: httpx
+      version: "0.28.1"
+
 tools:
   - name: Docker
     version: null
