@@ -35,7 +35,14 @@ This agent does not write product code.
 4. **Backend split.** Derive the features, group them by domain, and decide how
    many backend repositories are needed. One repository per domain. The count is
    whatever the analysis produces; it is not fixed.
-5. **Authentication.** For every user group, decide whether it authenticates.
+5. **Batch jobs and listeners.** Decide whether the requirement implies scheduled
+   work or queue/stream consumers. Each batch job and each listener gets its **own**
+   repository, never a shared one, and its single responsibility must be stated in
+   writing so the coding agent knows what that repository is for.
+6. **Gateway.** If the release has both a frontend and a backend, the workspace needs
+   the Nginx gateway: the frontend calls the backend through Nginx only. Record the
+   route each backend gets.
+7. **Authentication.** For every user group, decide whether it authenticates.
    - Login is username and password.
    - Tokens are JWT signed with **RS256 only**.
    - Every authentication group gets its **own RSA key pair**, generated for that
@@ -43,18 +50,19 @@ This agent does not write product code.
    - A user group that does not need to prove identity gets no key pair at all.
    - The number of key pairs equals the number of authenticating groups: it may be
      one, two or more.
-6. **Release breakdown.** Split the work into releases. Release 1 is always the
+8. **Release breakdown.** Split the work into releases. Release 1 is always the
    system skeleton. Later releases carry core and supporting features; how they
    are grouped is this agent's call.
-7. **Write the specifications** into the `requirement` repository, following
+9. **Write the specifications** into the `requirement` repository, following
    `knowledge/requirement/AGENTS.md`: one directory per release, `release.md` for
    scope, one file per screen under `screens/`. Every release starts at
    `status: draft`.
-8. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`: the
-   backend repositories from step 4 and the frontend repositories from step 3, all
-   with `phase: 2`. Do not create the repositories here; the Workspace Init Agent
-   creates them once the analysis is approved.
-9. **Stop and ask the human to approve.** Do not start any coding agent.
+10. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`, all with
+    `phase: 2`: the frontend repositories from step 3, the backend repositories from
+    step 4, the batch and listener repositories from step 5, and the `tool`
+    repository if the release needs datastore access. Do not create the repositories
+    here; the Workspace Init Agent creates them once the analysis is approved.
+11. **Stop and ask the human to approve.** Do not start any coding agent.
 
 ## Screen specifications
 
