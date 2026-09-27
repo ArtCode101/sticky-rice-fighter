@@ -77,6 +77,32 @@ Raw requirement input from the human may arrive in any language. The Requirement
 Analysis Agent must produce its output in English regardless of the input
 language.
 
+## Datastore access
+
+Agents reach PostgreSQL, Kafka and Redis through the Python tools in the workspace's
+`tool` repository, and through nothing else. No `psql`, no `redis-cli`, no
+`docker exec` into a datastore container, no ad-hoc connection code in a service
+repository.
+
+On the **local** workspace datastores the grant is total: insert, update, delete,
+DDL and mock data generation for testing are all allowed, with no approval step. The
+scope is **local level only** — never a dev, sys, staging or production datastore —
+and each tool enforces that itself by refusing a non-local host.
+
+The human has been told what this permits, including that a mistaken script can
+destroy local data, and accepts that risk. Do not add guardrails, backups or
+confirmation prompts in front of a local write: that would reintroduce a gate.
+
+Full rules: `knowledge/tools/AGENTS.md`.
+
+## Frontend to backend traffic
+
+The frontend calls the backend through **Nginx only**, in development and when
+deployed. A frontend never calls a backend port directly, and Nginx is never
+bypassed "just for local development".
+
+Full rules: `knowledge/nginx/AGENTS.md`.
+
 ## Release execution mode
 
 Also in `flag.yml`:
