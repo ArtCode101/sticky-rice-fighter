@@ -8,6 +8,27 @@ This repository is the **framework repo**. It holds the knowledge, context, rule
 and agent definitions used to build systems in a separate **workspace**. It is not
 the workspace itself, and no product code is ever written here.
 
+## Workspace input
+
+File:
+
+`.env` (created by the human from `.env.example`; git-ignored, never committed)
+
+| Key | Required | Meaning |
+|---|---|---|
+| `WORKSPACE_PATH` | yes | Absolute path to the workspace the framework operates on. Every repository the framework creates or edits lives under this path. |
+
+The human drives everything from this repository: clone it, copy `.env.example`
+to `.env`, set `WORKSPACE_PATH`, and run the framework from here.
+
+`WORKSPACE_PATH` is the only writable location. Agents must treat any write
+outside `WORKSPACE_PATH` as out of bounds, and writes inside this repository are
+governed by the operating mode below.
+
+The operating mode is deliberately **not** part of `.env`. `flag.yml` is the
+single source of truth for it, so the switch cannot be changed by editing an
+untracked file.
+
 ## Operating mode
 
 File:
