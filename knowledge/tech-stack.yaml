@@ -125,6 +125,12 @@ internal:
     - name: httpx
       version: "0.28.1"
 
+gateway:
+  # The frontend calls the backend through Nginx only.
+  # Host process during development, Docker container at deploy time.
+  - name: Nginx
+    version: "1.30.5"
+
 tools:
   - name: Docker
     version: null

@@ -1,0 +1,28 @@
+# Nginx gateway for the definition-of-done deploy.
+#
+# Here Nginx IS a Docker container, unlike the development phase where it runs as
+# a host process. Upstreams are compose service names, not 127.0.0.1.
+#
+# The frontend reaches the backends through this service only.
+#
+# Required:
+#   WORKSPACE_NAME - names the container, matching the workspace's other services.
+
+services:
+  nginx:
+    image: nginx:1.30.5
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-nginx
+
+    ports:
+      - "${NGINX_PORT:-8000}:8000"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
