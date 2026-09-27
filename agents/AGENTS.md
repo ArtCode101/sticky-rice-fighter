@@ -54,10 +54,13 @@ produces the loop this framework is built to avoid, and must not be added.
 ## Concurrency
 
 - One repository is owned by exactly one agent at a time. Two agents must never
-  write to the same repository.
+  write product code to the same repository.
 - Agents working on different repositories run in parallel.
 - The number of coding agents for a release equals the number of repositories that
   release touches, as decided by the Requirement Analysis Agent.
+- A Coding Agent may spawn helper agents, for example to start and watch a local
+  process. A helper inherits its parent's boundaries and does not become a second
+  writer for the parent's repository.
 
 ## Priority
 
@@ -72,7 +75,11 @@ Every agent must:
 - Read `flag.yml` before writing, and never write inside the framework repository
   while `mode: working`.
 - Never write `flag.yml`, in either mode.
-- Write only inside `WORKSPACE_PATH`, apart from the one repository it was
-  assigned.
+- Write only inside `WORKSPACE_PATH`, and within it only where its own definition
+  says it may. Product code goes in the one repository it was assigned; the
+  supporting paths each agent may also touch are listed in its definition.
+- Reach PostgreSQL, Kafka and Redis only through the Python tools in the `tool`
+  repository, against a local host.
+- Route frontend-to-backend traffic through Nginx only.
 - Produce all output in English.
 - Stop and report to the human rather than working around a rule in this file.
