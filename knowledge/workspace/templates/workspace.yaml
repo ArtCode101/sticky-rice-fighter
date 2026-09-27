@@ -38,6 +38,8 @@ repos:
   # Backend repositories are split by domain.
   # Frontend repositories are split by user group, for example a separate admin
   # portal and general-user site.
+  # Batch jobs and listeners get one repository each, never a shared one.
+  # The tool repository holds the Python datastore access tools, at most one.
   #
   # - name: my-workspace-backend-<domain>
   #   type: backend
@@ -46,5 +48,20 @@ repos:
   #
   # - name: my-workspace-frontend-<user-group>
   #   type: frontend
+  #   phase: 2
+  #   remote: null
+  #
+  # - name: my-workspace-batch-<job>
+  #   type: batch
+  #   phase: 2
+  #   remote: null
+  #
+  # - name: my-workspace-listener-<topic>
+  #   type: listener
+  #   phase: 2
+  #   remote: null
+  #
+  # - name: my-workspace-tool
+  #   type: tool
   #   phase: 2
   #   remote: null

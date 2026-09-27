@@ -40,7 +40,7 @@ AI agents must not:
 |---|---|---|
 | `workspace.name` | yes | Name of the workspace. |
 | `repos[].name` | yes | Repository name. Names only — never a local host path. |
-| `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `backend`, `frontend`. |
+| `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `batch`, `listener`. |
 | `repos[].phase` | yes | Creation phase. `1` = create immediately, `2` = create once the requirement analysis says it is needed. |
 | `repos[].remote` | no | Git remote link. May be `null` and filled in later. |
 
@@ -52,8 +52,24 @@ AI agents must not:
 | `requirement` | exactly 1 | Holds the release and screen specifications produced by the Requirement Analysis Agent. Git-versioned as an audit trail. |
 | `deployment` | 1 or more | Deploy scripts for the local Docker host and for real environments. Created empty in phase 1. |
 | `config` | 1 or more | Configuration for every part of the system. Read by the deployment repository at deploy time. Created empty in phase 1. |
+| `tool` | 0 or 1 | The Python tools that are the only sanctioned way for an agent to reach PostgreSQL, Kafka or Redis. See `knowledge/tools/AGENTS.md`. |
 | `backend` | 0 or more | Backend services, split by domain. Created in phase 2. |
 | `frontend` | 0 or more | Frontend applications, split by user group. Created in phase 2. |
+| `batch` | 0 or more | Batch jobs. **One repository per batch job.** Created in phase 2. |
+| `listener` | 0 or more | Queue and stream listeners. **One repository per listener.** Created in phase 2. |
+
+### Batch and listener repositories
+
+A batch job and a listener each get their **own** repository. They are never
+collected into one shared repository.
+
+Every batch and listener repository must state its single responsibility in writing,
+in its `README.md`: what this specific job or listener does, what it consumes and
+what it produces. A repository whose responsibility cannot be written in a sentence
+has been scoped wrongly.
+
+Their configuration may be edited to connect to the real source, the same way a
+backend's may.
 
 ## Phases
 
@@ -62,7 +78,11 @@ are all created together at workspace initialization: `registry`, `requirement`,
 an empty `deployment` and an empty `config`.
 
 Phase 2 repositories depend on the requirement analysis, which decides how many
-backend repositories are needed (one per domain) and how many frontend
-repositories are needed (one per user group, for example a separate admin portal
-and general-user site). They are appended to the workspace manifest and created
-only once that analysis is approved.
+backend repositories are needed (one per domain), how many frontend repositories are
+needed (one per user group, for example a separate admin portal and general-user
+site), and whether the release needs any `batch` or `listener` repositories. They
+are appended to the workspace manifest and created only once that analysis is
+approved.
+
+The `tool` repository is created the first time an agent needs to reach a datastore,
+which in practice is during the first release. It carries `phase: 2`.
