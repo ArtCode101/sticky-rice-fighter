@@ -101,3 +101,7 @@ database:
 messaging:
   - name: Kafka
     version: "4"
+
+tools:
+  - name: Docker
+    version: null
