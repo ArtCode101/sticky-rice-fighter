@@ -39,10 +39,12 @@ AI agents must not:
 | Field | Required | Meaning |
 |---|---|---|
 | `workspace.name` | yes | Name of the workspace. |
+| `workspace.repo_layout` | yes | `mono` or `multi`. Asked of the human at initialization and never changed afterwards. See **Repository layout mode**. |
+| `workspace.mcp_server` | yes | `true` or `false`. Whether the human asked for an MCP server. See **The MCP server is opt-in**. |
 | `repos[].name` | yes | Repository name. Names only — never a local host path. |
-| `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `batch`, `listener`. |
+| `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `batch`, `listener`, `mcp-server`. |
 | `repos[].phase` | yes | Creation phase. `1` = create immediately, `2` = create once the requirement analysis says it is needed. |
-| `repos[].remote` | no | Git remote link. May be `null` and filled in later. |
+| `repos[].remote` | no | Git remote link. May be `null` and filled in later. In `mono` layout there is one remote for the whole workspace, so this field stays `null` on every entry. |
 
 ## Repository types
 
@@ -57,6 +59,7 @@ AI agents must not:
 | `frontend` | 0 or more | Frontend applications, split by user group. Created in phase 2. |
 | `batch` | 0 or more | Batch jobs. **One repository per batch job.** Created in phase 2. |
 | `listener` | 0 or more | Queue and stream listeners. **One repository per listener.** Created in phase 2. |
+| `mcp-server` | 0 or 1 | The MCP adapter over the backend API, so an outside AI agent can drive the system. Created in phase 2, and **only when the human asked for one**. See `knowledge/mcp/AGENTS.md`. |
 
 ### Batch and listener repositories
 
@@ -70,6 +73,68 @@ has been scoped wrongly.
 
 Their configuration may be edited to connect to the real source, the same way a
 backend's may.
+
+### The MCP server is opt-in
+
+There is no `mcp-server` entry unless the human asked for one. `workspace.mcp_server`
+records the answer, given once at initialization.
+
+- `false`, or absent, means the repository is never created and nothing MCP-related
+  is generated.
+- `false` is not a permanent refusal. If the human later asks for an MCP server
+  directly, append the entry and set the field to `true`. The field exists to stop
+  agents from asking again, not to override an instruction.
+- At most one, whatever the number of backend domains. One server covers them all.
+
+Full rules: `knowledge/mcp/AGENTS.md`.
+
+### Registry repository layout
+
+The `registry` repository is the workspace's index, and it is also where each backend
+publishes the OpenAPI document that the MCP server is generated from.
+
+```text
+<workspace>-registry/
+├── repos.yaml              # the repository index: every repository and its type
+├── openapi/
+│   ├── <backend-1>.json    # written by the agent that owns <backend-1>, only
+│   └── <backend-2>.json    # written by the agent that owns <backend-2>, only
+└── README.md
+```
+
+**Ownership inside this repository is the file, not the repository.** This is a
+deliberate exception to "one repository, one agent", and it is the only one:
+
+- The agent that owns backend X writes `openapi/<X>.json` and nothing else.
+- It must not touch another backend's document, `repos.yaml`, or anything else here.
+- Two agents therefore work in this repository at the same time, each in its own
+  file. That is allowed precisely because their write sets cannot overlap.
+
+The document is regenerated as part of the backend's own release work, so it moves
+with the code rather than drifting behind it.
+
+## Repository layout mode
+
+`workspace.repo_layout` decides how git is laid out across the workspace. The human
+chooses it at initialization; no agent chooses it and no agent changes it afterwards.
+
+| Mode | Git layout |
+|---|---|
+| `multi` | One git repository per manifest entry. `git init` runs once per repository. |
+| `mono` | **One** git repository at the workspace root. `git init` runs once, and every repository in the manifest — `registry`, `requirement`, `deployment`, `config`, `tool`, every `backend`, `frontend`, `batch`, `listener` and the `mcp-server` — is a directory inside it. |
+
+In both modes the manifest is the same list of repositories with the same names and
+types. Only the git boundary moves.
+
+In `mono` mode:
+
+- Coding agents write files and **do not commit**. One commit is made per release,
+  after `preflight/done-check.sh` passes, so parallel agents never contend for the
+  git index and no merge step is introduced.
+- There is deliberately no intermediate checkpoint inside a release.
+- `repos[].remote` stays `null`; the single remote belongs to the workspace.
+
+In `multi` mode each repository commits as it always has.
 
 ## Phases
 
@@ -86,3 +151,6 @@ approved.
 
 The `tool` repository is created the first time an agent needs to reach a datastore,
 which in practice is during the first release. It carries `phase: 2`.
+
+The `mcp-server` repository carries `phase: 2` as well, and is appended only when
+`workspace.mcp_server` is `true`.

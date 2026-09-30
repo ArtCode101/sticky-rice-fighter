@@ -10,6 +10,17 @@
 workspace:
   name: my-workspace
 
+  # Git layout. Asked of the human at initialization, every time, and never changed
+  # afterwards. "mono" = one git repository at the workspace root holding every
+  # repository below as a directory. "multi" = one git repository per entry.
+  # When the human does not choose, the answer is "mono".
+  repo_layout: mono
+
+  # Whether the human asked for an MCP server over this system's backend API.
+  # Asked at initialization, every time. When the human does not answer, or says no,
+  # this stays false and nothing MCP-related is generated.
+  mcp_server: false
+
 repos:
   # --- Phase 1: no dependencies, created immediately -----------------------
   - name: my-workspace-registry
@@ -40,6 +51,7 @@ repos:
   # portal and general-user site.
   # Batch jobs and listeners get one repository each, never a shared one.
   # The tool repository holds the Python datastore access tools, at most one.
+  # The mcp-server repository is created only if the human asked for one, at most one.
   #
   # - name: my-workspace-backend-<domain>
   #   type: backend
@@ -63,5 +75,13 @@ repos:
   #
   # - name: my-workspace-tool
   #   type: tool
+  #   phase: 2
+  #   remote: null
+  #
+  # Only when workspace.mcp_server is true. At most one, whatever the number of
+  # backend domains.
+  #
+  # - name: my-workspace-mcp-server
+  #   type: mcp-server
   #   phase: 2
   #   remote: null
