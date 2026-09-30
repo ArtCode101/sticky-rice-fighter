@@ -6,14 +6,23 @@
 # entry points respond. Nothing about logic correctness is checked here.
 #
 # Usage:
-#   preflight/done-check.sh [--gateway <url>] <compose-file> <url> [url...]
+#   preflight/done-check.sh [--gateway <url>] [--mcp <url>] <compose-file> <url> [url...]
 #
 # --gateway asserts that Nginx is deployed and answering. Any release whose frontend
-# calls a backend must pass it, because the frontend reaches the backend through
+# calls a backend must pass it, because every caller reaches the backend through
 # Nginx only.
+#
+# --mcp asserts that the MCP server is deployed, lists its tools, and calls one of
+# them for real. An MCP release has no screen to click through, so this takes the
+# place of that check.
 #
 # Example:
 #   preflight/done-check.sh --gateway http://localhost:8000 \
+#       ../my-workspace/my-workspace-deployment/local/compose.yml \
+#       http://localhost:8000
+#
+#   preflight/done-check.sh --gateway http://localhost:8000 \
+#       --mcp http://localhost:8100 \
 #       ../my-workspace/my-workspace-deployment/local/compose.yml \
 #       http://localhost:8000
 #
@@ -34,18 +43,30 @@ pass() { printf "${GREEN}[OK]${NC}   %s\n" "$1"; }
 fail() { printf "${RED}[FAIL]${NC} %s\n" "$1"; FAILED=1; }
 
 usage() {
-    printf "usage: %s [--gateway <url>] <compose-file> <url> [url...]\n" "$0"
+    printf "usage: %s [--gateway <url>] [--mcp <url>] <compose-file> <url> [url...]\n" "$0"
 }
 
 # --gateway asserts that Nginx is deployed as a service and answers on that url.
 # Any release whose frontend calls a backend must pass it: the frontend reaches the
 # backend through Nginx only.
+#
+# --mcp asserts the definition of done for a release that ships an MCP server: the
+# service is deployed, it lists its tools, and one real tool call reaches the backend.
 GATEWAY_URL=""
+MCP_URL=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --gateway)
             GATEWAY_URL="${2:-}"
             if [ -z "$GATEWAY_URL" ]; then
+                usage
+                exit 2
+            fi
+            shift 2
+            ;;
+        --mcp)
+            MCP_URL="${2:-}"
+            if [ -z "$MCP_URL" ]; then
                 usage
                 exit 2
             fi
@@ -96,7 +117,7 @@ else
 fi
 
 # 3. When a gateway is required, Nginx must be one of the deployed services and it
-#    must answer. The frontend reaches the backend through Nginx only, so a release
+#    must answer. Every caller reaches the backend through Nginx only, so a release
 #    with a frontend is not done without it.
 if [ -n "$GATEWAY_URL" ]; then
     if printf '%s\n' "$SERVICES" | grep -qi 'nginx'; then
@@ -115,7 +136,53 @@ if [ -n "$GATEWAY_URL" ]; then
     fi
 fi
 
-# 4. Every entry point must respond. Any HTTP status below 500 counts as
+# 4. When an MCP server is required, it must be deployed, it must list its tools,
+#    and one of those tools must actually reach the backend. An MCP release has no
+#    screen to click through, so these three checks are its definition of done.
+if [ -n "$MCP_URL" ]; then
+    if printf '%s\n' "$SERVICES" | grep -qi 'mcp-server'; then
+        pass "MCP server is a deployed service"
+    else
+        fail "No mcp-server service in $COMPOSE_FILE"
+    fi
+
+    # 4a. tools/list must respond with at least one tool.
+    TOOLS_RESPONSE="$(curl -s --max-time 15 \
+        -H 'content-type: application/json' \
+        -H 'accept: application/json, text/event-stream' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+        "$MCP_URL" 2>/dev/null)"
+
+    FIRST_TOOL="$(printf '%s' "$TOOLS_RESPONSE" \
+        | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+        | head -n 1 \
+        | sed -E 's/.*"([^"]*)"$/\1/')"
+
+    if [ -z "$FIRST_TOOL" ]; then
+        fail "tools/list returned no tools from $MCP_URL"
+    else
+        pass "tools/list responded ($FIRST_TOOL and any others)"
+
+        # 4b. Call that tool for real. Any JSON-RPC result means the request went
+        #     through the server, the gateway and the backend. A transport-level
+        #     failure or a JSON-RPC error means it did not.
+        CALL_RESPONSE="$(curl -s --max-time 20 \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"$FIRST_TOOL\",\"arguments\":{}}}" \
+            "$MCP_URL" 2>/dev/null)"
+
+        if [ -z "$CALL_RESPONSE" ]; then
+            fail "No response calling tool $FIRST_TOOL at $MCP_URL"
+        elif printf '%s' "$CALL_RESPONSE" | grep -q '"error"'; then
+            fail "Tool $FIRST_TOOL returned a JSON-RPC error: the call did not reach the backend"
+        else
+            pass "Tool $FIRST_TOOL reached the backend"
+        fi
+    fi
+fi
+
+# 5. Every entry point must respond. Any HTTP status below 500 counts as
 #    responding: the point is that the system is reachable and clickable, not
 #    that the response is correct.
 for url in "$@"; do

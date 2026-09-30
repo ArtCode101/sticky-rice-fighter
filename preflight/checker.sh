@@ -2,7 +2,7 @@
 #
 # checker.sh - checks machine readiness for the sticky-rice-fighter stack:
 #   1. Java 25
-#   2. Node.js 24
+#   2. Node.js 24, and the npm that ships with it
 #   3. Docker
 #   4. Python 3
 #
@@ -43,6 +43,14 @@ if command -v node >/dev/null 2>&1; then
     fi
 else
     fail "Node.js not found in PATH"
+fi
+
+# 2b. npm, which builds the frontend and the MCP server. It ships with Node.js, so a
+#     missing npm means a broken Node installation rather than a separate install.
+if command -v npm >/dev/null 2>&1; then
+    pass "npm detected ($(npm -v))"
+else
+    fail "npm not found in PATH: the frontend and MCP server are built with npm and tsc"
 fi
 
 # 3. Docker
