@@ -5,6 +5,7 @@ type: feature          # feature | change
 supersedes: null       # for type: change, the locked release this replaces
 status: draft          # draft | in_progress | locked
 deployed_at: null      # ISO date, set when the release is locked
+commit: null           # set when the release is locked: the commit that satisfied it
 ---
 
 # Release 1: System skeleton

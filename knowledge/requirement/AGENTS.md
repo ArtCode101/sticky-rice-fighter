@@ -59,8 +59,21 @@ Every `release.md` carries a `status` in its front matter.
 
 Rules:
 
-- When a release meets the definition of done, set `status: locked` and
-  `deployed_at` to the date, and commit. That commit is the lock.
+- When a release meets the definition of done, set `status: locked`, `deployed_at`
+  to the date, and `commit` to the commit that satisfied the release, then commit.
+  That commit is the lock.
+- `commit` is what ties an approved specification to the code that delivered it. In
+  `mono` layout it is the one commit made for that release. In `multi` layout it is
+  one hash per repository the release touched, listed as a map:
+
+  ```yaml
+  commit:
+    my-workspace-backend-account: a1b2c3d
+    my-workspace-frontend-user: e4f5a6b
+  ```
+
+- `commit` is as immutable as the rest of a locked file. It is filled in once, at the
+  moment of locking, and never corrected afterwards.
 - A `locked` release file and its screen files must never be edited again, by any
   agent or by the human, for any reason.
 - To change something in a locked release, create a **new** release directory with
