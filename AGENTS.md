@@ -95,13 +95,50 @@ confirmation prompts in front of a local write: that would reintroduce a gate.
 
 Full rules: `knowledge/tools/AGENTS.md`.
 
-## Frontend to backend traffic
+## Backend traffic
 
-The frontend calls the backend through **Nginx only**, in development and when
-deployed. A frontend never calls a backend port directly, and Nginx is never
-bypassed "just for local development".
+**Every** caller reaches the backend through **Nginx only**, in development and when
+deployed. That covers the frontend, the MCP server and anything added later. Nothing
+calls a backend port directly, and Nginx is never bypassed "just for local
+development".
 
 Full rules: `knowledge/nginx/AGENTS.md`.
+
+## MCP servers
+
+The framework can generate an **MCP server** over the system it built, so an outside
+AI agent can drive that system:
+
+```text
+AI Agent  ->  MCP Client  ->  MCP Server  ->  Nginx  ->  Backend API  ->  Database
+```
+
+- It is built **only when the human asked for one**. `workspace.mcp_server` in the
+  workspace manifest records the answer, given once at initialization. Silence means
+  no.
+- It wraps the backend API and **never** touches PostgreSQL, Kafka or Redis.
+- Its tools are generated mechanically from the OpenAPI documents each backend
+  publishes to `registry/openapi/`. No agent chooses which endpoints to expose.
+- The framework generates the server only. The client is the outside agent; its stack
+  is pinned for reference.
+
+Full rules: `knowledge/mcp/AGENTS.md`.
+
+## Repository layout
+
+Each workspace is either **mono** (one git repository at the workspace root, every
+repository a directory inside it) or **multi** (one git repository per repository).
+
+`workspace.repo_layout` in the workspace manifest records the answer, asked of the
+human at initialization. Agents read it and must never write it. When the human does
+not choose, the answer is `mono`.
+
+Full rules: `knowledge/workspace/AGENTS.md`.
+
+## Ideas that are not built
+
+`NOTES.md` records ideas the human deliberately decided not to build yet. No agent
+creates, edits or works from that file. A note there is not a requirement.
 
 ## Release execution mode
 

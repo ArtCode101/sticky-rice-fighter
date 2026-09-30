@@ -12,6 +12,7 @@ definitions. No product code is ever written here.
 ```text
 .
 ├── AGENTS.md                  # framework rules: mode, workspace input, language
+├── NOTES.md                   # recorded ideas that are deliberately NOT built
 ├── flag.yml                   # human switches: operating mode, release execution
 ├── .env.example               # WORKSPACE_PATH contract
 ├── agents/                    # agent definitions
@@ -25,7 +26,8 @@ definitions. No product code is ever written here.
 │   ├── requirement/           # release and screen spec templates, locking rules
 │   ├── local-env/             # dependency containers for the develop phase
 │   ├── local-run/             # running backend, frontend and Nginx on the host
-│   ├── nginx/                 # the mandatory frontend-to-backend gateway
+│   ├── nginx/                 # the mandatory gateway in front of every backend
+│   ├── mcp/                   # the MCP server generated over the backend API
 │   ├── tools/                 # the only sanctioned datastore access path
 │   ├── deployment/            # deploy layout and local deploy template
 │   ├── config/                # config layout and key-pair rules
@@ -47,8 +49,8 @@ cp .env.example .env
 ./preflight/checker.sh
 ```
 
-`checker.sh` must pass before anything else: it verifies Java 25, Node.js 24,
-Docker and Python 3.13.
+`checker.sh` must pass before anything else: it verifies Java 25, Node.js 24 with
+npm, Docker and Python 3.13.
 
 ## The two switches
 
@@ -61,6 +63,22 @@ Both live in `flag.yml` and only the human changes them.
 
 Keep `mode: working` whenever agents are building a system. Switch to `edit` only
 to change the framework itself.
+
+## Two questions at initialization
+
+The Workspace Init Agent asks the human two things, every time, and writes both
+answers into `workspace.yaml` so nothing asks again.
+
+| Question | When the human does not answer |
+|---|---|
+| Monorepo or multi-repo? | **`mono`** — one git repository at the workspace root. Work is not blocked on a decision. |
+| Do you want an MCP server? | **`false`** — nothing is built. Nothing is generated that was not asked for. |
+
+The defaults point in opposite directions on purpose. An agent never answers the
+layout question on the human's behalf while they still have the chance to, and a
+`false` on the MCP question is not permanent: a direct request later still gets built.
+
+These are inputs, not gates. The framework still has exactly two checkpoints.
 
 ## How a build runs
 
@@ -89,6 +107,7 @@ These two look similar and are not the same thing.
 | Dependencies | containers, per workspace, started by any agent that needs them | containers, from the deployment repository |
 | Backend, frontend, batch, listeners | host processes | Docker containers |
 | Nginx | host process | Docker container |
+| MCP server | host process, stdio | Docker container, Streamable HTTP |
 | Datastore access | Python tools, full privileges, local only | — |
 | Purpose | see the code work while writing it | finish the release |
 | Verified by | the agent looking at it | `preflight/done-check.sh` |
@@ -104,7 +123,9 @@ and stay up across releases. Data survives `local-env.sh down`; only
 
 1. The human approves the requirement analysis, once, before any code is written.
 2. A release deploys and runs on the local Docker host and can be clicked through,
-   verified by `preflight/done-check.sh`.
+   verified by `preflight/done-check.sh`. An `mcp-server` has no screen, so
+   `done-check.sh --mcp` checks instead that the service is deployed, `tools/list`
+   responds, and one real tool call reaches the backend.
 
 Nothing else is gated. There is no QA agent and no reviewer agent, and no agent
 judges whether its own work is good enough — that is what produces loops that never
@@ -123,12 +144,18 @@ be edited again.
   no Docker image uses the `latest` tag.
 - Login is username and password. Tokens are JWT signed with RS256 only, with one
   RSA key pair per authentication group.
-- The frontend calls the backend through **Nginx only**, while developing and when
-  deployed.
+- **Every** caller reaches the backend through **Nginx only**, while developing and
+  when deployed: the frontend, the MCP server, and anything added later.
+- A generated **MCP server** wraps the backend API and never touches a datastore, and
+  it is built only when the human asked for one.
 - Agents reach PostgreSQL, Kafka and Redis through the **Python tools** in the
   workspace's `tool` repository and nothing else, against a **local** host only.
 - Every batch job and every listener gets its own repository, with its
   responsibility written down.
+- Ownership may be a directory or a single file, but no two agents ever write the same
+  file.
 - All framework content and all generated artifacts are written in English.
 
 Start with `AGENTS.md` for the full rules, then `agents/AGENTS.md` for the flow.
+`NOTES.md` holds ideas that were recorded and deliberately not built; no agent works
+from it.
