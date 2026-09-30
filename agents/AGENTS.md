@@ -46,6 +46,14 @@ The framework has exactly two checkpoints:
 1. The human approves the Requirement Analysis Agent's output, once, before any
    code is written.
 2. A release deploys and runs on the local Docker host and can be clicked through.
+   For an `mcp-server`, which has no screen, `preflight/done-check.sh --mcp` takes the
+   place of clicking through.
+
+The two questions the Workspace Init Agent asks the human — monorepo or multi-repo,
+and whether they want an MCP server — are **inputs, not gates**. They collect a
+parameter before any work starts. Nothing is being approved, no agent judges anything,
+and no work is held back pending a verdict. Do not turn them into a checkpoint, and do
+not add more questions in their shape.
 
 No agent has its own completion gate. No agent judges whether its own work is good
 enough. Any rule of the form "prove this is complete before continuing" is what
@@ -61,6 +69,21 @@ produces the loop this framework is built to avoid, and must not be added.
 - A Coding Agent may spawn helper agents, for example to start and watch a local
   process. A helper inherits its parent's boundaries and does not become a second
   writer for the parent's repository.
+
+### Ownership is a write set, not a directory name
+
+Two situations break the one-repository-one-agent shape while keeping the rule it
+protects: **no two agents ever write the same file.**
+
+| Situation | How ownership works |
+|---|---|
+| `workspace.repo_layout: mono` | Every repository is a directory in one git repository. An agent owns its directory. It writes files and **does not commit**; one commit is made for the whole release after `preflight/done-check.sh` passes, so parallel agents never contend for the git index and no merge step is introduced. |
+| `registry/openapi/` | Every backend publishes its OpenAPI document here. An agent owns exactly `openapi/<its own backend>.json` — not another backend's document, not `repos.yaml`, nothing else in that repository. |
+
+These are the only two exceptions, and both are exceptions to the *boundary*, never to
+the rule. An agent that cannot name the exact files it owns is not allowed to write.
+
+In `multi` layout each repository commits as it always has.
 
 ## Priority
 
@@ -80,6 +103,10 @@ Every agent must:
   supporting paths each agent may also touch are listed in its definition.
 - Reach PostgreSQL, Kafka and Redis only through the Python tools in the `tool`
   repository, against a local host.
-- Route frontend-to-backend traffic through Nginx only.
+- Route every call to a backend through Nginx only, whether it comes from a frontend,
+  from the MCP server, or from anything added later.
+- Read `workspace.repo_layout` and `workspace.mcp_server` from
+  `${WORKSPACE_PATH}/workspace.yaml` rather than asking the human again, and never
+  write either field.
 - Produce all output in English.
 - Stop and report to the human rather than working around a rule in this file.

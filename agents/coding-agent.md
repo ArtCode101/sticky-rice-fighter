@@ -21,8 +21,11 @@ repository.
 | Infrastructure templates | `knowledge/database/`, `knowledge/redis/`, `knowledge/kafka/` |
 | Local environment provisioning | `knowledge/local-env/AGENTS.md` |
 | Host-process development | `knowledge/local-run/AGENTS.md` |
-| Frontend-to-backend gateway | `knowledge/nginx/AGENTS.md` |
+| Backend-to-gateway rule | `knowledge/nginx/AGENTS.md` |
 | Datastore access tools | `knowledge/tools/AGENTS.md` |
+| MCP server rules | `knowledge/mcp/AGENTS.md`, when the assigned repository is the `mcp-server` |
+| Repository layout and registry layout | `knowledge/workspace/AGENTS.md` |
+| Backend OpenAPI documents | `${WORKSPACE_PATH}/<workspace>-registry/openapi/` |
 | Configuration | the workspace's `config` repository |
 
 ## Procedure
@@ -33,10 +36,15 @@ repository.
    version and never use a `latest` Docker tag.
 4. Take infrastructure from the knowledge templates rather than inventing new
    Compose services.
-5. Start whatever local environment the work needs, and run the code on the host,
+5. If the assigned repository is a `backend`, regenerate its OpenAPI document with
+   springdoc and write it to `registry/openapi/<this backend>.json` as part of this
+   release's work. That document is the only input the MCP server is built from, so it
+   moves with the code rather than drifting behind it.
+6. Start whatever local environment the work needs, and run the code on the host,
    as often as useful (see **Local development** below).
-6. Make the release deployable on the local Docker host.
-7. Report done when the release runs and can be clicked through.
+7. Make the release deployable on the local Docker host.
+8. Report done when the release runs and can be clicked through, or — for an
+   `mcp-server` — when `done-check.sh --mcp` passes, since there is no screen.
 
 ## Local development
 
@@ -45,8 +53,9 @@ While writing code this agent may, without asking:
 - Provision and start the dependency containers for the workspace, per
   `knowledge/local-env/AGENTS.md`. `up` and `status` are free; `destroy` is not —
   only the human asks for that.
-- Run the backend, frontend, batch jobs, listeners and Nginx as **host processes**,
-  per `knowledge/local-run/AGENTS.md`, to see the code work immediately.
+- Run the backend, frontend, batch jobs, listeners, Nginx and the MCP server as
+  **host processes**, per `knowledge/local-run/AGENTS.md`, to see the code work
+  immediately.
 - Edit the local and test configuration in the repositories it is working on to wire
   those processes together, and reflect settled values back into the `config`
   repository.
@@ -107,18 +116,33 @@ agent may write only these, and only to support its own work:
 | `local/` values in the `config` repository | record the settled configuration |
 | the `tool` repository | write or extend the Python datastore tools |
 | the Nginx configuration for the workspace | add its backend's upstream and route |
+| `registry/openapi/<its own backend>.json` | publish the OpenAPI document the MCP server is built from |
+
+The last row is the framework's **only** exception to one repository, one agent. In
+the `registry` repository ownership is the **file**: the agent that owns backend X
+writes `openapi/<X>.json` and nothing else there. It must not touch another backend's
+document, `repos.yaml`, or any other file in that repository. Two agents may work in
+the `registry` at the same time precisely because their write sets cannot overlap.
 
 Everything else is out of bounds.
 
 ## Must not
 
 - Write product code in any repository other than the one assigned.
+- Touch another backend's OpenAPI document, `repos.yaml`, or anything else in the
+  `registry` repository beyond its own `openapi/<backend>.json`.
 - Write any file inside the framework repository.
 - Edit any file in the `requirement` repository. Specifications are read-only
   here, and `locked` releases are permanently immutable.
 - Change a version pinned in `knowledge/tech-stack.yaml`.
 - Start the next release.
-- Point the frontend at a backend port instead of through Nginx.
+- Point the frontend or the MCP server at a backend port instead of through Nginx.
+- Connect an MCP server to PostgreSQL, Kafka or Redis. It calls the backend API and
+  nothing else, and it holds no signing key of its own.
+- Choose which endpoints become MCP tools, or leave one out. Every operation in every
+  OpenAPI document becomes one tool.
+- Commit during a release when `workspace.repo_layout` is `mono`. One commit is made
+  per release, after `done-check.sh` passes.
 - Touch a datastore except through the Python tools, or point a tool at a non-local
   host.
 - Run `local-env.sh destroy` unless the human asked for it.
@@ -128,3 +152,7 @@ Everything else is out of bounds.
 
 The release deploys and runs on the local Docker host and can be clicked through.
 Nothing else is checked.
+
+An `mcp-server` has no screen to click through, so for that repository the check is
+`preflight/done-check.sh --mcp <url>`: the service is deployed, `tools/list` responds,
+and one real tool call reaches the backend.

@@ -22,6 +22,7 @@ This agent does not write product code.
 | Requirement rules and templates | `knowledge/requirement/AGENTS.md` |
 | Manifest rules | `knowledge/workspace/AGENTS.md` |
 | Workspace manifest | `${WORKSPACE_PATH}/workspace.yaml` |
+| MCP rules | `knowledge/mcp/AGENTS.md`, when `workspace.mcp_server` is `true` |
 
 ## Procedure
 
@@ -40,9 +41,19 @@ This agent does not write product code.
    repository, never a shared one, and its single responsibility must be stated in
    writing so the coding agent knows what that repository is for.
 6. **Gateway.** If the release has both a frontend and a backend, the workspace needs
-   the Nginx gateway: the frontend calls the backend through Nginx only. Record the
+   the Nginx gateway: every caller reaches the backend through Nginx only. Record the
    route each backend gets.
-7. **Authentication.** For every user group, decide whether it authenticates.
+7. **MCP server.** Read `workspace.mcp_server` from the manifest. If it is `true`, the
+   workspace needs one `mcp-server` repository. Do **not** ask the human again — the
+   answer was given at initialization — and do **not** decide to add one when the
+   field is `false`.
+   - There is at most one, whatever the number of backend domains.
+   - Do **not** choose which endpoints become tools. Every operation in every
+     backend's OpenAPI document becomes one tool, mechanically, at build time. There
+     is nothing to design and nothing to list here.
+   - The backend that owns authentication needs a token exchange endpoint, because the
+     MCP server holds no signing key. Record that as scope on that backend.
+8. **Authentication.** For every user group, decide whether it authenticates.
    - Login is username and password.
    - Tokens are JWT signed with **RS256 only**.
    - Every authentication group gets its **own RSA key pair**, generated for that
@@ -50,19 +61,20 @@ This agent does not write product code.
    - A user group that does not need to prove identity gets no key pair at all.
    - The number of key pairs equals the number of authenticating groups: it may be
      one, two or more.
-8. **Release breakdown.** Split the work into releases. Release 1 is always the
+9. **Release breakdown.** Split the work into releases. Release 1 is always the
    system skeleton. Later releases carry core and supporting features; how they
    are grouped is this agent's call.
-9. **Write the specifications** into the `requirement` repository, following
+10. **Write the specifications** into the `requirement` repository, following
    `knowledge/requirement/AGENTS.md`: one directory per release, `release.md` for
    scope, one file per screen under `screens/`. Every release starts at
    `status: draft`.
-10. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`, all with
+11. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`, all with
     `phase: 2`: the frontend repositories from step 3, the backend repositories from
-    step 4, the batch and listener repositories from step 5, and the `tool`
-    repository if the release needs datastore access. Do not create the repositories
-    here; the Workspace Init Agent creates them once the analysis is approved.
-11. **Stop and ask the human to approve.** Do not start any coding agent.
+    step 4, the batch and listener repositories from step 5, the `mcp-server`
+    repository from step 7 if the manifest asks for one, and the `tool` repository if
+    the release needs datastore access. Do not create the repositories here; the
+    Workspace Init Agent creates them once the analysis is approved.
+12. **Stop and ask the human to approve.** Do not start any coding agent.
 
 ## Screen specifications
 
@@ -99,7 +111,11 @@ freely in place. Nothing downstream starts until the human approves.
 - Create repositories. It appends them to the manifest; the Workspace Init Agent
   creates them.
 - Edit a release whose `status` is `locked`. Propose a new `type: change` release
-  instead.
+  instead. An MCP release is an ordinary `type: feature` release; there is no
+  separate release type for it.
+- Add an `mcp-server` repository when `workspace.mcp_server` is `false`, or ask the
+  human that question again. It was answered at initialization.
+- Decide which endpoints become MCP tools. That mapping is mechanical.
 - Write any file inside the framework repository.
 - Start a coding agent or continue past the human gate on its own.
 
