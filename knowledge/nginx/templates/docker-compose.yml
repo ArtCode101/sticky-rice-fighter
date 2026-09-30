@@ -3,7 +3,8 @@
 # Here Nginx IS a Docker container, unlike the development phase where it runs as
 # a host process. Upstreams are compose service names, not 127.0.0.1.
 #
-# The frontend reaches the backends through this service only.
+# Every caller reaches the backends through this service only: the frontend, the
+# mcp-server, and anything added later.
 #
 # Required:
 #   WORKSPACE_NAME - names the container, matching the workspace's other services.

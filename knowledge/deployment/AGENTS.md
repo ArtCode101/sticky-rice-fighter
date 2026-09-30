@@ -49,11 +49,18 @@ knowledge templates, not from scratch:
 - `knowledge/redis/templates/docker-compose.yml`
 - `knowledge/kafka/templates/docker-compose.yml`
 - `knowledge/nginx/templates/docker-compose.yml`
+- `knowledge/mcp/templates/docker-compose.yml`, only when the workspace has an
+  `mcp-server`
 
 The Nginx service is required whenever the release has both a frontend and a
-backend: the frontend reaches the backend through Nginx only. Unlike the develop
+backend: every caller reaches the backend through Nginx only. Unlike the develop
 phase, where Nginx runs as a host process, here it is a container like the rest, and
 its upstreams are compose service names.
+
+The MCP service is included only when `workspace.mcp_server` is `true`. Deployed, it
+is a container speaking Streamable HTTP, unlike the develop phase where it is a host
+process on stdio. It reaches the backend through the `nginx` service and has no
+datastore connection of any kind.
 
 AI agents should:
 

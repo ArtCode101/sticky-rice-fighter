@@ -13,14 +13,25 @@ workspace that has both.
 
 ## The rule that never bends
 
-**The frontend calls the backend through Nginx only.**
+**Every caller reaches the backend through Nginx only.**
 
-A frontend never calls a backend service directly, not in development and not in a
-deployed system. Every call goes to Nginx, which routes it to the right backend.
+The frontend is one such caller, and so is the MCP server. Nothing calls a backend
+service directly, not in development and not in a deployed system. Every call goes to
+Nginx, which routes it to the right backend.
+
+| Caller | Reaches the backend through |
+|---|---|
+| Frontend | Nginx |
+| MCP server | Nginx |
+| Anything added later | Nginx |
+
+There is no exception, and adding one is not a way to work around a problem. The
+token exchange the MCP server calls is a backend endpoint like any other, so it goes
+through Nginx too.
 
 AI agents must not:
 
-- Point a frontend at a backend port directly.
+- Point a frontend or an MCP server at a backend port directly.
 - Bypass Nginx "just for local development".
 - Remove or reroute an existing backend upstream to work around a problem.
 
@@ -40,6 +51,10 @@ interchangeable.
 The development shape proxies to `127.0.0.1:<port>` because the backends are host
 processes. The container shape proxies to compose service names because everything
 runs inside the compose network. Do not copy one form of upstream into the other.
+
+The MCP server is the same two shapes: a host process on stdio during development, a
+container on Streamable HTTP when deployed. Either way it calls **in** to this
+gateway; it is never an upstream behind it.
 
 ## Template usage
 
