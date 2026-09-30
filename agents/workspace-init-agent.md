@@ -15,6 +15,7 @@ This agent does not analyze requirements and does not write product code.
 | Operating mode | `flag.yml` in the framework repository |
 | Manifest template | `knowledge/workspace/templates/workspace.yaml` |
 | Manifest schema and rules | `knowledge/workspace/AGENTS.md` |
+| Two answers from the human | Asked at initialization. See **Two questions for the human**. |
 
 ## Procedure
 
@@ -23,31 +24,85 @@ This agent does not analyze requirements and does not write product code.
 2. Run `preflight/checker.sh`. Stop and report if the machine is not ready.
 3. Run `preflight/mode-guard.sh` to learn the operating mode. Regardless of the
    result, never write inside the framework repository during initialization.
-4. If `${WORKSPACE_PATH}/workspace.yaml` does not exist, copy the template there
+4. **Ask the human the two questions below** and record the answers. Ask them before
+   writing the manifest, because both answers go into it.
+5. If `${WORKSPACE_PATH}/workspace.yaml` does not exist, copy the template there
    and replace the placeholder workspace and repository names with real ones
-   derived from the workspace name.
-5. Read `${WORKSPACE_PATH}/workspace.yaml`.
-6. For every entry with `phase: 1`, create `${WORKSPACE_PATH}/<name>/`, run
-   `git init`, and make an initial commit. Phase 1 repositories are independent,
-   so they may be created in any order or in parallel.
-7. Give each created repository a `README.md` naming the repository and its type.
+   derived from the workspace name. Write `repo_layout` and `mcp_server` from the
+   answers to step 4.
+6. Read `${WORKSPACE_PATH}/workspace.yaml`.
+7. Initialize git according to `workspace.repo_layout`:
+   - `multi`: for every entry with `phase: 1`, create `${WORKSPACE_PATH}/<name>/`,
+     run `git init` in it, and make an initial commit. Phase 1 repositories are
+     independent, so they may be created in any order or in parallel.
+   - `mono`: run `git init` **once** at `${WORKSPACE_PATH}`, create
+     `${WORKSPACE_PATH}/<name>/` for every entry with `phase: 1` as a directory
+     inside it, and make one initial commit covering all of them.
+8. Give each created repository a `README.md` naming the repository and its type.
    The `deployment` and `config` repositories stay otherwise empty: their scripts
    and configuration are added later, not here.
-8. Write the repository index into the `registry` repository: every repository
+9. Write the repository index into the `registry` repository: every repository
    name from the manifest with its type. Names only, never a local host path.
    Leave `remote` empty when the manifest has none.
-9. Report what was created.
+10. Report what was created, including which layout was chosen and whether an MCP
+    server was asked for.
+
+## Two questions for the human
+
+Both are asked **every time** a workspace is initialized, and both answers are
+written into the manifest so no agent ever asks again.
+
+### 1. Monorepo or multi-repo?
+
+```text
+Should this workspace be one git repository (monorepo) or one git repository
+per repository (multi-repo)?
+```
+
+- Offer the choice first. **Never decide on the human's behalf** while they still
+  have a chance to answer.
+- Explain it in one line if they do not know the terms: monorepo means everything
+  lives in one git repository; multi-repo means each backend, frontend and supporting
+  repository gets its own.
+- **Default `mono`** when the answer is absent, or non-committal — "you decide",
+  "whatever you think", or no reply at all. Monorepo is easier to start and keeps the
+  decision count down.
+- Write the answer to `workspace.repo_layout`.
+
+### 2. Do you want an MCP server?
+
+```text
+Do you want an MCP server for this system, so an outside AI agent can drive it?
+```
+
+- **Default `false`** when the answer is absent, non-committal or "no". Unlike the
+  layout question, silence here means *do not build it*: nothing is generated that
+  was not asked for.
+- Write the answer to `workspace.mcp_server`.
+- A `false` here is not a permanent refusal. If the human later asks for an MCP server
+  directly, it gets built and the field is set to `true`. The field stops agents from
+  asking again; it does not override an instruction.
+
+These two questions are **inputs, not gates**. They collect a parameter before work
+starts. They are not a checkpoint, nothing is being approved, and no agent judges
+anything. The framework still has exactly the two checkpoints in `agents/AGENTS.md`.
 
 ## Outputs
 
-- `${WORKSPACE_PATH}/workspace.yaml`
-- One git repository per phase 1 manifest entry, each with an initial commit
+- `${WORKSPACE_PATH}/workspace.yaml`, with `repo_layout` and `mcp_server` filled in
+- Git initialized according to `repo_layout`: one repository per phase 1 manifest
+  entry in `multi`, or a single repository at the workspace root in `mono`, with an
+  initial commit either way
 - A populated repository index inside the `registry` repository
 
 ## Must not
 
-- Create any `phase: 2` repository. Backend and frontend repositories are created
-  only after the requirement analysis is approved.
+- Create any `phase: 2` repository. Backend, frontend and `mcp-server` repositories
+  are created only after the requirement analysis is approved.
+- Skip either question, or answer one of them on the human's behalf before they have
+  had the chance to.
+- Change `repo_layout` or `mcp_server` once they are written. Only the human revisits
+  those.
 - Write any file inside the framework repository.
 - Store a local host path in the manifest or the registry.
 - Write product code, deploy scripts or configuration content.
@@ -55,5 +110,7 @@ This agent does not analyze requirements and does not write product code.
 
 ## Definition of done
 
-Every phase 1 repository exists under `WORKSPACE_PATH` as a git repository with an
-initial commit, and the registry lists all of them with their types.
+Every phase 1 repository exists under `WORKSPACE_PATH` with an initial commit — as
+its own git repository in `multi` layout, or as a directory in the workspace's single
+git repository in `mono` layout — the registry lists all of them with their types, and
+the manifest records both answers from the human.
