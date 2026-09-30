@@ -1,0 +1,34 @@
+# MCP server for the definition-of-done deploy.
+#
+# Deployed, the MCP server IS a Docker container and speaks Streamable HTTP. During
+# development it runs as a host process on stdio and is not containerized, the same
+# way Nginx has two shapes.
+#
+# It reaches the backend through the nginx service and nothing else. It has no
+# datastore connection of any kind, by design.
+#
+# Required:
+#   WORKSPACE_NAME - names the container, matching the workspace's other services.
+
+services:
+  mcp-server:
+    build:
+      context: ../../<workspace>-mcp-server
+    image: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-mcp-server:0.1.0
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-mcp-server
+
+    ports:
+      - "${MCP_PORT:-8100}:8100"
+
+    environment:
+      MCP_TRANSPORT: streamable-http
+      MCP_PORT: 8100
+      # The gateway, never a backend service name and never a backend port.
+      GATEWAY_URL: http://nginx:8000
+      TOKEN_EXCHANGE_PATH: ${TOKEN_EXCHANGE_PATH:-/api/auth/token-exchange}
+
+    depends_on:
+      nginx:
+        condition: service_started
+
+    restart: unless-stopped
