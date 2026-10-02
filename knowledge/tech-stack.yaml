@@ -48,12 +48,11 @@ backend:
     # Generates the OpenAPI document every backend commits to the registry, which
     # is the only input the MCP server is built from. See knowledge/mcp/AGENTS.md.
     #
-    # VERSION NOT PINNED YET. The published springdoc line is 2.8.x, which targets
-    # Spring Boot 3. No release for Spring Boot 4 could be confirmed from a
-    # trustworthy source. Confirm the Spring Boot 4 compatible version and pin it
-    # here before the first backend release ships an OpenAPI document.
+    # Verified 2026-10-02 against Maven Central: the 3.1.x line is built on Spring
+    # Boot 4.1.0 (2.8.x / 2.9.x target Spring Boot 3 and must not be used). A test
+    # build on Java 25 + Spring Boot 4.1.1 served /v3/api-docs as OpenAPI 3.1.0.
     - name: "springdoc-openapi-starter-webmvc-api"
-      version: null
+      version: "3.1.1"
     - name: "spring-boot-starter-validation"
       version: "4.1.1"
     - name: "spring-boot-starter-data-jpa"
