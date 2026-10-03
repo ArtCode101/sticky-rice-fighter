@@ -124,6 +124,73 @@ AI Agent  ->  MCP Client  ->  MCP Server  ->  Nginx  ->  Backend API  ->  Databa
 
 Full rules: `knowledge/mcp/AGENTS.md`.
 
+## Asking the human
+
+Every question any agent asks takes one shape: **numbered options**, one line each
+saying what the option means, a **free-text slot** last, and **one question at a time**.
+A wall of ten or twenty questions is the failure this replaces.
+
+`workspace.auto_recommend` decides whether an agent may take the option it recommends
+without asking. Even when it is `true`, a question with **no** recommended option is
+still asked: auto mode has nothing to apply there, and an agent must not invent a
+recommendation in order to avoid asking.
+
+Questions are inputs, not gates. The framework still has exactly the two checkpoints in
+`agents/AGENTS.md`.
+
+Full rules: `knowledge/questions/AGENTS.md`.
+
+## Authentication
+
+The login method is **asked**, never assumed — a requirement that says "the system has
+login" has not said how. Username and password is on the list of options but is never
+the recommended one.
+
+A method that needs provider setup is offered two ways: the agent does it through the
+provider's CLI, or the human does it in the portal with a numbered list of what to click.
+The second is the default.
+
+Tokens: the **identity token is JWE**, encrypted and unreadable. Data the frontend has
+to display may be **JWS**. Signing is RS256 with a key pair — private key signs, public
+key verifies — and **every environment has its own pair**, as does every authentication
+group. No key ever reaches a browser or a mobile build.
+
+Full rules: `knowledge/auth/AGENTS.md`.
+
+## Applications the framework builds
+
+Backend, frontend, **mobile** (React Native on Expo), batch jobs, listeners, and
+optionally an MCP server. A mobile app is split by user group the same way a frontend
+is, reaches the backend through Nginx like everything else, and **never carries a secret
+in its build** — a user can unpack the installed file.
+
+Full rules: `knowledge/mobile/AGENTS.md`.
+
+## Journeys and journey tests
+
+A **journey** is the ordered path a real user walks, including the steps inserted to make
+a later one possible. The journey **document** is written first, from the code and the
+specifications; the Playwright or Maestro script comes after it.
+
+Journeys run in a **test zone** with its own containers, separate from the develop zone
+the human clicks through, with mock data injected per journey.
+
+**Journey tests never gate a release.** A failing journey becomes a `type: change`
+release, exactly like a defect the human finds by clicking. The Journey Test Agent is
+not a QA agent and has no veto.
+
+Full rules: `knowledge/journey/AGENTS.md`.
+
+## Versioning and image tags
+
+The rule that no image uses the `latest` tag applies to images the framework
+**consumes** — base and dependency images stay pinned exactly. An image the framework
+**produces** from workspace code is tagged `latest` in `mono` layout, and with its
+repository's git tag in `multi` layout, where the repository is tagged with a semantic
+version before it is built.
+
+Full rules: `knowledge/versioning/AGENTS.md`.
+
 ## Repository layout
 
 Each workspace is either **mono** (one git repository at the workspace root, every

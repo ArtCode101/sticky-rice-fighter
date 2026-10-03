@@ -74,6 +74,44 @@ answer:
 Anyone building these starts from that split, not from bolting three checks onto every
 iteration.
 
+## Authentication details left open
+
+Raised 2026-10-03 while deciding the login patterns. Each was explicitly put off, not
+forgotten.
+
+- **Where key material lives.** The human asked for a recommendation but said "ยังไม่ต้อง
+  ตัดสินใจตอนนี้" — not now. What *is* decided: RS256 with a key pair, a separate pair per
+  environment, and private keys never committed. Where the pair is stored is open.
+- **Token lifetime and refresh.** How long an access token lasts and whether there is a
+  refresh token. "ติดไว้ก่อน".
+- **Key rotation.** How a key pair is replaced without invalidating every live token at
+  once. Deferred with the item above.
+
+Until these are decided, a system is built with a key pair per environment and tokens
+that work; nothing here blocks a release.
+
+## Journey details left open
+
+Raised by the assistant while the journey rules were being settled, and never answered.
+These are gaps in the rules as written, not features:
+
+- **Preconditions as a formal field.** A journey document states its starting state in
+  prose. It is not formally tied to a named mock-data set, so nothing mechanically
+  guarantees a journey and its data stay in step.
+- **Journeys that are not the happy path.** Everything decided describes the path that
+  succeeds. A wrong password or an incomplete form has no place in the journey document
+  yet.
+- **What happens to a journey when the system changes.** If a new feature changes an
+  existing step, the old journey is either rewritten or dropped, and nothing says who
+  decides which.
+
+## Mobile, second tier
+
+Raised 2026-10-03 and set aside as "ของรอง" — secondary:
+
+- **Internationalization**, if an app has to support more than one language.
+- **Error tracking**, Sentry or similar.
+
 ## Code index and code graph
 
 Raised 2026-09-28. Noted, not built: "let me go study it first".
