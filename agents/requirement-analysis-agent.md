@@ -23,6 +23,9 @@ This agent does not write product code.
 | Manifest rules | `knowledge/workspace/AGENTS.md` |
 | Workspace manifest | `${WORKSPACE_PATH}/workspace.yaml` |
 | MCP rules | `knowledge/mcp/AGENTS.md`, when `workspace.mcp_server` is `true` |
+| Question protocol | `knowledge/questions/AGENTS.md` |
+| Login methods and provider setup | `knowledge/auth/AGENTS.md` |
+| Mobile rules | `knowledge/mobile/AGENTS.md` |
 
 ## Procedure
 
@@ -36,6 +39,10 @@ This agent does not write product code.
 4. **Backend split.** Derive the features, group them by domain, and decide how
    many backend repositories are needed. One repository per domain. The count is
    whatever the analysis produces; it is not fixed.
+4b. **Mobile.** Decide whether the requirement implies a mobile application. If it
+   does, one `mobile` repository per user group, split the same way the frontends are.
+   Then **ask** whether this project needs **push notifications** — not wanted means
+   `expo-notifications` is never added. See `knowledge/mobile/AGENTS.md`.
 5. **Batch jobs and listeners.** Decide whether the requirement implies scheduled
    work or queue/stream consumers. Each batch job and each listener gets its **own**
    repository, never a shared one, and its single responsibility must be stated in
@@ -54,13 +61,18 @@ This agent does not write product code.
    - The backend that owns authentication needs a token exchange endpoint, because the
      MCP server holds no signing key. Record that as scope on that backend.
 8. **Authentication.** For every user group, decide whether it authenticates.
-   - Login is username and password.
-   - Tokens are JWT signed with **RS256 only**.
-   - Every authentication group gets its **own RSA key pair**, generated for that
-     group. Two groups never share a key pair.
+   - **Ask which login method.** A requirement that says "the system has login" has not
+     said how. Offer the methods from `knowledge/auth/AGENTS.md` as options. Username
+     and password is on the list but is **never** the recommended option.
+   - For a method that needs provider setup, **ask** whether the agent does it through
+     the provider's CLI or the human does it in the portal with a numbered menu.
+   - Tokens: the **identity token is JWE**, encrypted and unreadable. Data the frontend
+     has to display may be **JWS**.
+   - Signing is **RS256** with a key pair, private key signs and public key verifies.
+   - Every authentication group gets its **own RSA key pair**, and **every environment
+     gets its own** as well. Nothing is shared in either direction.
    - A user group that does not need to prove identity gets no key pair at all.
-   - The number of key pairs equals the number of authenticating groups: it may be
-     one, two or more.
+   - A user group that does not authenticate is not given a login method.
 9. **Release breakdown.** Split the work into releases. Release 1 is always the
    system skeleton. Later releases carry core and supporting features; how they
    are grouped is this agent's call.
@@ -70,9 +82,10 @@ This agent does not write product code.
    `status: draft`.
 11. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`, all with
     `phase: 2`: the frontend repositories from step 3, the backend repositories from
-    step 4, the batch and listener repositories from step 5, the `mcp-server`
-    repository from step 7 if the manifest asks for one, and the `tool` repository if
-    the release needs datastore access. Do not create the repositories here; the
+    step 4, the mobile repositories from step 4b, the batch and listener repositories
+    from step 5, the `mcp-server` repository from step 7 if the manifest asks for one,
+    the `journey` repository once the release produces a clickable system, and the
+    `tool` repository if the release needs datastore access. Do not create the repositories here; the
     Workspace Init Agent creates them once the analysis is approved.
 12. **Stop and ask the human to approve.** Do not start any coding agent.
 
@@ -116,6 +129,11 @@ freely in place. Nothing downstream starts until the human approves.
 - Add an `mcp-server` repository when `workspace.mcp_server` is `false`, or ask the
   human that question again. It was answered at initialization.
 - Decide which endpoints become MCP tools. That mapping is mechanical.
+- Assume a login method because the requirement did not name one, or recommend username
+  and password.
+- Add push notifications to a project that did not ask for them.
+- Ask more than one question at a time, or send a list of questions for the human to
+  work through. One at a time, in the shape `knowledge/questions/AGENTS.md` defines.
 - Write any file inside the framework repository.
 - Start a coding agent or continue past the human gate on its own.
 

@@ -6,6 +6,9 @@
 #   3. Docker
 #   4. Python 3
 #
+# Mobile tooling is checked too, but only WARNS when missing: a workspace without a
+# mobile repository does not need it, so a missing emulator is not a reason to block.
+#
 set -u
 
 RED='\033[0;31m'
@@ -78,6 +81,33 @@ if command -v python3 >/dev/null 2>&1; then
     fi
 else
     fail "Python 3 not found in PATH"
+fi
+
+# 5. Mobile tooling. Needed only when the workspace has a mobile repository, so these
+#    warn rather than fail. React Native and Expo themselves install per project.
+if command -v adb >/dev/null 2>&1; then
+    pass "adb detected - the agent can drive the Android Emulator"
+else
+    warn "adb not found: needed to drive the Android Emulator for a mobile repository"
+fi
+
+# Presence only. Do not invoke these tools to read a version: xcrun can block for a
+# long time when the Xcode tooling is not fully installed, and this script must stay
+# fast enough to run before every piece of work.
+if [ "$(uname -s)" = "Darwin" ]; then
+    if command -v xcrun >/dev/null 2>&1; then
+        pass "xcrun detected - simctl can drive the iOS Simulator"
+    else
+        warn "xcrun not found: needed to drive the iOS Simulator (install Xcode)"
+    fi
+else
+    warn "iOS Simulator runs on macOS only: this machine can build and test Android only"
+fi
+
+if command -v maestro >/dev/null 2>&1; then
+    pass "Maestro detected"
+else
+    warn "Maestro not found: needed to run mobile journeys"
 fi
 
 echo "-----------------------------------"

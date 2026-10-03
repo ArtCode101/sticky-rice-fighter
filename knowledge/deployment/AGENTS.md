@@ -74,5 +74,7 @@ AI agents must not:
 
 - Modify the knowledge files in this directory during normal project generation.
 - Hard-code configuration values or credentials into a deploy script.
-- Change a pinned image version, or use a `latest` Docker tag.
+- Change a pinned image version, or give a **consumed** image a `latest` tag. An image
+  built from this workspace's own code is tagged by layout, per
+  `knowledge/versioning/AGENTS.md`.
 - Treat a real-environment deploy as part of a release's definition of done.

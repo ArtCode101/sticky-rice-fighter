@@ -38,6 +38,28 @@ Procedure:
    copy.
 5. `./local-env.sh up`
 
+## Two zones
+
+The containers this file provisions are the **develop zone**: what the human clicks
+through for fast feedback, and what the agent fixes and restarts against.
+
+Journeys do not run there. They run in a **test zone** with its **own** containers,
+started in addition to these, where the application runs as a Docker image rather than
+natively. The reason is that a journey needs a known starting state, and the develop zone
+is full of whatever the human has been clicking on — starting a journey by wiping their
+data would be the wrong trade.
+
+| | Develop zone | Test zone |
+|---|---|---|
+| Lives in | `${WORKSPACE_PATH}/local-env/` | `${WORKSPACE_PATH}/local-env/test/` |
+| Owned by | the Coding Agent | the Journey Test Agent |
+| The application | started natively | built and run as a container |
+| Torn down | only when the human asks | when the human answers "tear them down" after a run |
+
+The test zone's rules are in `knowledge/journey/AGENTS.md`. The develop zone's lifecycle
+below applies to the develop zone only. No agent tears down the develop zone because a
+journey finished.
+
 ## Lifecycle
 
 | Command | Effect |

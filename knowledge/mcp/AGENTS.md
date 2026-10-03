@@ -155,8 +155,9 @@ AI agents must not:
 - Give the MCP server a private key or an RSA key pair of its own.
 - Introduce a new authentication group for the MCP server.
 - Let the MCP server mint, forge or extend a token.
-- Skip the exchange and forward an OAuth token to the backend. The backend accepts
-  JWT RS256 only.
+- Skip the exchange and forward an OAuth token to the backend. The backend accepts the
+  system's own identity token, which is **JWE** signed with RS256 — never a provider's
+  OAuth token. See `knowledge/auth/AGENTS.md`.
 
 The local credential the MCP server uses for the exchange lives in the `config`
 repository under `local/`. It is never hard-coded and never committed as a real
@@ -178,7 +179,9 @@ the same reason a host-run backend does not.
 
 - Modify the knowledge files in this directory during normal project generation.
 - Change a version pinned in `knowledge/tech-stack.yaml`.
-- Use the `latest` Docker tag.
+- Pin a consumed base image to `latest`. The MCP server's **own** image is tagged by
+  layout, per `knowledge/versioning/AGENTS.md`: `latest` in `mono`, the repository's git
+  tag in `multi`.
 - Add Express, NestJS or any other HTTP framework. The SDK carries its own transport.
 - Add a database driver or an ORM.
 - Build an MCP server that the human did not ask for.

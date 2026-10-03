@@ -24,6 +24,10 @@ repository.
 | Backend-to-gateway rule | `knowledge/nginx/AGENTS.md` |
 | Datastore access tools | `knowledge/tools/AGENTS.md` |
 | MCP server rules | `knowledge/mcp/AGENTS.md`, when the assigned repository is the `mcp-server` |
+| Mobile rules | `knowledge/mobile/AGENTS.md`, when the assigned repository is a `mobile` app |
+| Login and token rules | `knowledge/auth/AGENTS.md` |
+| Versioning and image tagging | `knowledge/versioning/AGENTS.md` |
+| Question protocol | `knowledge/questions/AGENTS.md` |
 | Repository layout and registry layout | `knowledge/workspace/AGENTS.md` |
 | Backend OpenAPI documents | `${WORKSPACE_PATH}/<workspace>-registry/openapi/` |
 | Configuration | the workspace's `config` repository |
@@ -33,7 +37,8 @@ repository.
 1. Read the release specification and every screen specification for the release.
 2. Write product code in the assigned repository only.
 3. Use the versions in `knowledge/tech-stack.yaml` exactly. Never change a pinned
-   version and never use a `latest` Docker tag.
+   version, and never give a **consumed** base image a `latest` tag. Images built from
+   this workspace's code are tagged by layout, per `knowledge/versioning/AGENTS.md`.
 4. Take infrastructure from the knowledge templates rather than inventing new
    Compose services.
 5. If the assigned repository is a `backend`, regenerate its OpenAPI document with
@@ -42,8 +47,11 @@ repository.
    moves with the code rather than drifting behind it.
 6. Start whatever local environment the work needs, and run the code on the host,
    as often as useful (see **Local development** below).
-7. Make the release deployable on the local Docker host.
-8. Report done when the release runs and can be clicked through, or — for an
+7. Tag and build according to `knowledge/versioning/AGENTS.md`: in `multi` layout, tag
+   the repository with its semantic version **before** building, and give the image the
+   same number; in `mono` layout, tag the image `latest`.
+8. Make the release deployable on the local Docker host.
+9. Report done when the release runs and can be clicked through, or — for an
    `mcp-server` — when `done-check.sh --mcp` passes, since there is no screen.
 
 ## Local development
@@ -55,7 +63,11 @@ While writing code this agent may, without asking:
   only the human asks for that.
 - Run the backend, frontend, batch jobs, listeners, Nginx and the MCP server as
   **host processes**, per `knowledge/local-run/AGENTS.md`, to see the code work
-  immediately.
+  immediately. A mobile app runs on the Android Emulator or the iOS Simulator, driven
+  with `adb` or `simctl`, with screenshots when the agent needs to see the screen.
+- Generate mock data for the human to click through, through the Python tools. This is
+  the develop zone's data and is separate from a journey's mock data, which belongs to
+  the Journey Test Agent.
 - Edit the local and test configuration in the repositories it is working on to wire
   those processes together, and reflect settled values back into the `config`
   repository.
@@ -136,7 +148,14 @@ Everything else is out of bounds.
   here, and `locked` releases are permanently immutable.
 - Change a version pinned in `knowledge/tech-stack.yaml`.
 - Start the next release.
-- Point the frontend or the MCP server at a backend port instead of through Nginx.
+- Point the frontend, a mobile app or the MCP server at a backend port instead of
+  through Nginx.
+- Embed any secret in a mobile build. A user can unpack the installed file.
+- Issue an identity token as a readable signed token. The identity token is JWE.
+- Share one key pair across two environments.
+- Tag a consumed base image `latest`, or build a `multi` layout repository before it has
+  been tagged.
+- Ask more than one question at a time.
 - Connect an MCP server to PostgreSQL, Kafka or Redis. It calls the backend API and
   nothing else, and it holds no signing key of its own.
 - Choose which endpoints become MCP tools, or leave one out. Every operation in every

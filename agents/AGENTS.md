@@ -13,9 +13,15 @@ This file applies to all files under:
 | Workspace Init Agent | `agents/workspace-init-agent.md` | no |
 | Requirement Analysis Agent | `agents/requirement-analysis-agent.md` | **yes** |
 | Coding Agent | `agents/coding-agent.md` | no |
+| Journey Test Agent | `agents/journey-test-agent.md` | no |
 
 There is deliberately no QA agent and no reviewer agent. Adding one reintroduces
 the loop this framework exists to avoid.
+
+The Journey Test Agent is **not** one of those. It writes journeys, mock data and test
+scripts, runs them and reports. Its results do not gate a release: a failing journey
+becomes a `type: change` release, exactly like a defect the human finds by clicking.
+It has no veto, and giving it one would be the loop this rule forbids.
 
 ## Flow
 
@@ -33,6 +39,9 @@ Coding Agent x N            --->  one per repository, in parallel
       |
       v
 release runs on local Docker host  --->  release is locked
+      |
+      v
+Journey Test Agent          --->  journeys, mock data, scripts; reports only
       |
       v
 flag.yml release_execution:  manual -> wait for human
@@ -91,6 +100,20 @@ A newer release always wins over an earlier one. Overlapping or contradicting co
 is overwritten, not reconciled. Defects surface when the human clicks through the
 running system and come back as a `type: change` release.
 
+## Asking the human
+
+Every question any agent asks follows one shape, defined in
+`knowledge/questions/AGENTS.md`: numbered options, a one-line consequence each, a
+free-text slot last, and **one question at a time**. A wall of ten questions is the
+failure that protocol exists to fix.
+
+`workspace.auto_recommend` decides whether an agent may take the option it recommends
+without asking. Even when it is `true`, a question with **no** recommended option is
+still asked — auto mode has nothing to apply, and guessing is not a substitute.
+
+Questions are inputs, not gates. They collect a parameter before work starts. No agent
+may use one to hold work for review or to ask whether its own output is good enough.
+
 ## Shared rules
 
 Every agent must:
@@ -105,8 +128,9 @@ Every agent must:
   repository, against a local host.
 - Route every call to a backend through Nginx only, whether it comes from a frontend,
   from the MCP server, or from anything added later.
-- Read `workspace.repo_layout` and `workspace.mcp_server` from
-  `${WORKSPACE_PATH}/workspace.yaml` rather than asking the human again, and never
-  write either field.
+- Read `workspace.repo_layout`, `workspace.mcp_server` and `workspace.auto_recommend`
+  from `${WORKSPACE_PATH}/workspace.yaml` rather than asking the human again, and never
+  write any of them.
+- Ask questions only in the shape `knowledge/questions/AGENTS.md` defines, one at a time.
 - Produce all output in English.
 - Stop and report to the human rather than working around a rule in this file.

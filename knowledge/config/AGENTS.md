@@ -75,6 +75,20 @@ That credential is a configuration value like any other:
 The MCP server never has a private key or an RSA key pair of its own. It is not an
 authentication group. See `knowledge/mcp/AGENTS.md`.
 
+## Mobile configuration is embedded at build time
+
+A mobile app cannot read configuration at runtime the way a server can: it is built into
+a file and installed on a device.
+
+- Values still live here, once, per environment, like everything else.
+- At **build time** the mobile build pulls that environment's values and embeds them, so
+  there is one build per environment.
+- **Only public values.** The gateway URL and the like. A user can unpack an installed
+  app and read every embedded value, so nothing secret goes into one — no client secret,
+  no private key, no datastore credential. Those stay on the backend.
+
+See `knowledge/mobile/AGENTS.md`.
+
 ## Rules
 
 AI agents should:
