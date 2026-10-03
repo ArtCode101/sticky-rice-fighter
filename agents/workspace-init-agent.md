@@ -15,7 +15,8 @@ This agent does not analyze requirements and does not write product code.
 | Operating mode | `flag.yml` in the framework repository |
 | Manifest template | `knowledge/workspace/templates/workspace.yaml` |
 | Manifest schema and rules | `knowledge/workspace/AGENTS.md` |
-| Two answers from the human | Asked at initialization. See **Two questions for the human**. |
+| Three answers from the human | Asked at initialization. See **Three questions for the human**. |
+| Question protocol | `knowledge/questions/AGENTS.md` |
 
 ## Procedure
 
@@ -24,12 +25,12 @@ This agent does not analyze requirements and does not write product code.
 2. Run `preflight/checker.sh`. Stop and report if the machine is not ready.
 3. Run `preflight/mode-guard.sh` to learn the operating mode. Regardless of the
    result, never write inside the framework repository during initialization.
-4. **Ask the human the two questions below** and record the answers. Ask them before
-   writing the manifest, because both answers go into it.
+4. **Ask the human the three questions below**, one at a time, and record the answers.
+   Ask them before writing the manifest, because all three answers go into it.
 5. If `${WORKSPACE_PATH}/workspace.yaml` does not exist, copy the template there
    and replace the placeholder workspace and repository names with real ones
-   derived from the workspace name. Write `repo_layout` and `mcp_server` from the
-   answers to step 4.
+   derived from the workspace name. Write `repo_layout`, `mcp_server` and
+   `auto_recommend` from the answers to step 4.
 6. Read `${WORKSPACE_PATH}/workspace.yaml`.
 7. Initialize git according to `workspace.repo_layout`:
    - `multi`: for every entry with `phase: 1`, create `${WORKSPACE_PATH}/<name>/`,
@@ -47,10 +48,15 @@ This agent does not analyze requirements and does not write product code.
 10. Report what was created, including which layout was chosen and whether an MCP
     server was asked for.
 
-## Two questions for the human
+## Three questions for the human
 
-Both are asked **every time** a workspace is initialized, and both answers are
+All three are asked **every time** a workspace is initialized, and all three answers are
 written into the manifest so no agent ever asks again.
+
+They are asked **one at a time**, in the numbered-option shape
+`knowledge/questions/AGENTS.md` defines — including question 3, which is the one that
+decides whether later questions get asked at all. Question 3 is never auto-answered by
+the mode it is establishing.
 
 ### 1. Monorepo or multi-repo?
 
@@ -83,13 +89,33 @@ Do you want an MCP server for this system, so an outside AI agent can drive it?
   directly, it gets built and the field is set to `true`. The field stops agents from
   asking again; it does not override an instruction.
 
-These two questions are **inputs, not gates**. They collect a parameter before work
+### 3. May agents take the option they recommend, without asking?
+
+```text
+When a decision comes up and one option is clearly best, may agents take it
+without stopping to ask you?
+
+  1. No, ask me every time       — you answer every decision yourself
+  2. Yes, take the recommended one — agents continue without interrupting you, and
+                                     say in their report what they chose and why
+  3. Something else              — type your answer
+```
+
+- **Default `false`** when the answer is absent or non-committal. Asking is the safe
+  direction.
+- Write the answer to `workspace.auto_recommend`.
+- Say plainly, when asking, that `true` does **not** silence every question: a decision
+  where no option is clearly best is still brought to them, because auto mode has
+  nothing to apply there.
+
+These three questions are **inputs, not gates**. They collect a parameter before work
 starts. They are not a checkpoint, nothing is being approved, and no agent judges
 anything. The framework still has exactly the two checkpoints in `agents/AGENTS.md`.
 
 ## Outputs
 
-- `${WORKSPACE_PATH}/workspace.yaml`, with `repo_layout` and `mcp_server` filled in
+- `${WORKSPACE_PATH}/workspace.yaml`, with `repo_layout`, `mcp_server` and
+  `auto_recommend` filled in
 - Git initialized according to `repo_layout`: one repository per phase 1 manifest
   entry in `multi`, or a single repository at the workspace root in `mono`, with an
   initial commit either way
@@ -99,10 +125,12 @@ anything. The framework still has exactly the two checkpoints in `agents/AGENTS.
 
 - Create any `phase: 2` repository. Backend, frontend and `mcp-server` repositories
   are created only after the requirement analysis is approved.
-- Skip either question, or answer one of them on the human's behalf before they have
+- Skip any of the three questions, or answer one on the human's behalf before they have
   had the chance to.
-- Change `repo_layout` or `mcp_server` once they are written. Only the human revisits
-  those.
+- Ask the three questions in one message. One at a time.
+- Apply `auto_recommend` to question 3 itself.
+- Change `repo_layout`, `mcp_server` or `auto_recommend` once they are written. Only the
+  human revisits those.
 - Write any file inside the framework repository.
 - Store a local host path in the manifest or the registry.
 - Write product code, deploy scripts or configuration content.
@@ -113,4 +141,4 @@ anything. The framework still has exactly the two checkpoints in `agents/AGENTS.
 Every phase 1 repository exists under `WORKSPACE_PATH` with an initial commit — as
 its own git repository in `multi` layout, or as a directory in the workspace's single
 git repository in `mono` layout — the registry lists all of them with their types, and
-the manifest records both answers from the human.
+the manifest records all three answers from the human.

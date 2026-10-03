@@ -21,6 +21,12 @@ workspace:
   # this stays false and nothing MCP-related is generated.
   mcp_server: false
 
+  # Whether agents may take the option they recommend without stopping to ask.
+  # Asked at initialization, every time. When the human does not answer, this stays
+  # false and every question is asked. A question with no recommended option is
+  # asked even when this is true. See knowledge/questions/AGENTS.md.
+  auto_recommend: false
+
 repos:
   # --- Phase 1: no dependencies, created immediately -----------------------
   - name: my-workspace-registry
@@ -48,7 +54,8 @@ repos:
   # --- Phase 2: appended by the Requirement Analysis Agent ----------------
   # Backend repositories are split by domain.
   # Frontend repositories are split by user group, for example a separate admin
-  # portal and general-user site.
+  # portal and general-user site. Mobile repositories are split the same way.
+  # The journey repository holds every journey, its mock data and its test script.
   # Batch jobs and listeners get one repository each, never a shared one.
   # The tool repository holds the Python datastore access tools, at most one.
   # The mcp-server repository is created only if the human asked for one, at most one.
@@ -60,6 +67,16 @@ repos:
   #
   # - name: my-workspace-frontend-<user-group>
   #   type: frontend
+  #   phase: 2
+  #   remote: null
+  #
+  # - name: my-workspace-mobile-<user-group>
+  #   type: mobile
+  #   phase: 2
+  #   remote: null
+  #
+  # - name: my-workspace-journey
+  #   type: journey
   #   phase: 2
   #   remote: null
   #

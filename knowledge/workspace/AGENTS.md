@@ -41,8 +41,9 @@ AI agents must not:
 | `workspace.name` | yes | Name of the workspace. |
 | `workspace.repo_layout` | yes | `mono` or `multi`. Asked of the human at initialization and never changed afterwards. See **Repository layout mode**. |
 | `workspace.mcp_server` | yes | `true` or `false`. Whether the human asked for an MCP server. See **The MCP server is opt-in**. |
+| `workspace.auto_recommend` | yes | `true` or `false`. Whether agents may take the recommended option without asking. See `knowledge/questions/AGENTS.md`. |
 | `repos[].name` | yes | Repository name. Names only — never a local host path. |
-| `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `batch`, `listener`, `mcp-server`. |
+| `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `mobile`, `batch`, `listener`, `mcp-server`, `journey`. |
 | `repos[].phase` | yes | Creation phase. `1` = create immediately, `2` = create once the requirement analysis says it is needed. |
 | `repos[].remote` | no | Git remote link. May be `null` and filled in later. In `mono` layout there is one remote for the whole workspace, so this field stays `null` on every entry. |
 
@@ -60,6 +61,8 @@ AI agents must not:
 | `batch` | 0 or more | Batch jobs. **One repository per batch job.** Created in phase 2. |
 | `listener` | 0 or more | Queue and stream listeners. **One repository per listener.** Created in phase 2. |
 | `mcp-server` | 0 or 1 | The MCP adapter over the backend API, so an outside AI agent can drive the system. Created in phase 2, and **only when the human asked for one**. See `knowledge/mcp/AGENTS.md`. |
+| `mobile` | 0 or more | React Native applications, split by user group the same way frontends are. Created in phase 2. See `knowledge/mobile/AGENTS.md`. |
+| `journey` | 0 or 1 | The journey documents, mock data and journey test scripts for the whole workspace. Created in phase 2. See `knowledge/journey/AGENTS.md`. |
 
 ### Batch and listener repositories
 
@@ -154,3 +157,10 @@ which in practice is during the first release. It carries `phase: 2`.
 
 The `mcp-server` repository carries `phase: 2` as well, and is appended only when
 `workspace.mcp_server` is `true`.
+
+The `mobile` repositories carry `phase: 2`, one per user group, appended when the
+requirement implies a mobile application.
+
+The `journey` repository carries `phase: 2` and is created the first time journeys are
+written for the workspace, which in practice is the first release that produces a
+clickable system.
