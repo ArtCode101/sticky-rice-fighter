@@ -104,6 +104,49 @@ backend:
     - name: "testcontainers-kafka"
       version: "2.0.3"
 
+mobile:
+  # React Native, chosen over Flutter: the same TypeScript as the frontend, the larger
+  # developer pool, and no second language to learn.
+  #
+  # Verified 2026-10-03 against the npm registry. Expo SDK 57 declares react-native
+  # 0.86.3 as its bundled version, so these two are aligned by construction - do not
+  # move one without the other.
+  runtime:
+    name: Node.js
+    version: "24"                 # the same runtime as the frontend and the MCP server
+  framework:
+    name: React Native
+    version: "0.86.3"
+  toolkit:
+    name: Expo
+    version: "57.0.26"            # bundles react-native 0.86.3
+  react:
+    version: "19.2.3"             # the version Expo 57 bundles
+  build:
+    name: Expo EAS Build
+    version: null                 # a hosted service; there is no version to pin
+  libraries:
+    - name: "@react-navigation/native"
+      version: "7.5.0"
+    - name: "zustand"
+      version: "5.0.15"           # state management. Redux Toolkit is deliberately not used
+    - name: "@tanstack/react-query"
+      version: "5.104.0"          # same pin as the frontend
+    - name: "axios"
+      version: "1.20.0"           # same pin as the frontend
+    - name: "react-hook-form"
+      version: "7.89.0"           # same pin as the frontend
+    - name: "react-native-mmkv"
+      version: "4.3.2"            # on-device storage. v4 is a Nitro Module; check the Expo build
+    - name: "react-native-paper"
+      version: "5.15.3"           # UI components. Material look on both platforms
+    - name: "expo-camera"
+      version: "57.0.6"           # the version Expo 57 bundles
+    - name: "expo-image-picker"
+      version: "57.0.20"          # the version Expo 57 bundles
+    - name: "expo-notifications"
+      version: "57.0.21"          # only added when the project asks for push
+
 database:
   - name: PostgreSQL
     version: "16"
@@ -117,8 +160,14 @@ testing:
     name: Python
     version: "3.13"  # fixed version, used for Playwright
   tools:
+    # Web journeys. See knowledge/journey/AGENTS.md.
     - name: Playwright
       version: "1.63.0"
+    # Mobile journeys. A CLI, not an npm package. Chosen over Detox: short YAML flows
+    # an agent writes easily, and it waits on the screen by itself.
+    # Verified 2026-10-03 against the Maestro release feed.
+    - name: Maestro
+      version: "2.11.0"
 internal:
   language:
     name: Python

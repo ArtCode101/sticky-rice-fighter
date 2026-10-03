@@ -1,0 +1,42 @@
+{
+  "// eas.json": [
+    "Expo EAS Build profiles, one per environment.",
+    "Each profile embeds that environment's PUBLIC config at build time, pulled from",
+    "the workspace's config repository. No secret belongs in any of these values:",
+    "a user can unpack the built file and read them.",
+    "Store submissions carry a version that increases every time; see",
+    "knowledge/versioning/AGENTS.md."
+  ],
+  "cli": {
+    "version": ">= 0.60.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "local": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "local",
+        "EXPO_PUBLIC_GATEWAY_URL": "http://localhost:8000"
+      }
+    },
+    "dev": {
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "dev",
+        "EXPO_PUBLIC_GATEWAY_URL": "https://dev.example.invalid"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_GATEWAY_URL": "https://example.invalid"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
