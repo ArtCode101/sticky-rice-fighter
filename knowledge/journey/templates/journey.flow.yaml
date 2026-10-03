@@ -1,0 +1,63 @@
+# Mobile journey flow, for Maestro.
+#
+# One file per journey, generated from journeys/<slug>.md AFTER that document exists.
+# The steps are the document's steps, in order, including the inserted ones.
+#
+# Version is pinned in knowledge/tech-stack.yaml. Maestro drives the Android Emulator
+# or the iOS Simulator and waits on the screen itself, so there are no explicit sleeps
+# here.
+#
+# Run against the TEST ZONE build, never the develop build the human is using.
+
+appId: com.example.app
+env:
+  USERNAME: ${JOURNEY_USERNAME}
+  PASSWORD: ${JOURNEY_PASSWORD}
+---
+- launchApp:
+    clearState: true
+
+# Step 1 - log in
+- tapOn:
+    id: 'username'
+- inputText: ${USERNAME}
+- tapOn:
+    id: 'password'
+- inputText: ${PASSWORD}
+- tapOn:
+    text: 'Log in'
+
+# Step 2 - create an account.
+# Inserted: step 4 has nowhere to put a record until an account exists.
+- tapOn:
+    text: 'Accounts'
+- tapOn:
+    text: 'Create account'
+- tapOn:
+    id: 'account-name'
+- inputText: 'Everyday'
+- tapOn:
+    text: 'Save'
+
+# Step 3 - open the account page
+- tapOn:
+    text: 'Everyday'
+
+# Step 4 - add an income record
+- tapOn:
+    text: 'Add record'
+- tapOn:
+    id: 'record-type'
+- tapOn:
+    text: 'Income'
+- tapOn:
+    id: 'amount'
+- inputText: '1200'
+- tapOn:
+    text: 'Save'
+
+# What tells us it worked
+- assertVisible:
+    text: '1,200'
+- assertVisible:
+    id: 'account-balance'
