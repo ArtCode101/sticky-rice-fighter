@@ -7,7 +7,9 @@ breakdown, the screen specifications, the repository split and the authenticatio
 design.
 
 This is the **only** agent whose output requires human approval. It is the single
-gate in the framework. Everything after it runs without gates.
+human gate in the framework. Everything after it runs without human gates; the only
+other check is the mechanical definition of done of each release — deployed, and its
+required journeys passed — in `agents/AGENTS.md`.
 
 This agent does not write product code.
 

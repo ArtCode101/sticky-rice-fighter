@@ -1,5 +1,40 @@
 # Release Notes
 
+## Unreleased
+
+### Journeys gate the release, with a bound
+
+A release used to be done when it deployed and its containers started. It is now done
+only when a real user's journeys through it have been **executed** and have **passed**.
+This reverses the v1.0.0 rule that journey tests report and never gate.
+
+- **Order inside a release.** Implement and run natively, build images, deploy and pass
+  `done-check.sh`, then write or update the journeys for the release's scope, provision
+  the test zone, run the journeys, clean up, and lock.
+- **Executed, not generated.** A Playwright or Maestro script that has not run proves
+  nothing. Desktop browser mode is now the default and the recommended answer.
+- **Rework loop.** A failing required journey produces evidence and a root cause in the
+  run report. The Coding Agent that owns the repository fixes, rebuilds and redeploys,
+  or the Journey Test Agent fixes its own script, and then every required journey runs
+  again.
+- **Bounded at 3 rounds.** After round 3 the loop stops, the test zone stays up, and the
+  human is asked: lock anyway, three more rounds, or leave the release open. That
+  question has no recommended option and is always asked, even in auto mode.
+- **No weakening.** A fix may change how a step is performed, never whether it is
+  performed or what is asserted. The required journeys are fixed before the first run.
+- **Test zone.** Its own compose project, `$WORKSPACE_NAME-test`, with only the
+  dependencies the release uses, running the images the release deployed. It no longer
+  builds images of its own. Once the journeys pass it is removed without asking:
+  containers, volumes, networks and run output. The "keep the test resources?" question
+  is gone.
+- **New:** `preflight/journey-check.sh`, which reads the release's run report and
+  confirms with Docker that nothing of the test zone is left.
+  `knowledge/journey/templates/run-report.md` and `templates/test-zone.yml`.
+- **Mono layout** makes its single release commit after both `done-check.sh` and
+  `journey-check.sh` pass, so journey rework lands in the same commit.
+- Releases with no screen (an `mcp-server` alone, batch jobs, listeners) have no
+  required journeys, and `done-check.sh` alone decides them.
+
 ## v1.0.0 — 2026-10-05
 
 The first tagged release of the framework. It is an AI agent framework that builds

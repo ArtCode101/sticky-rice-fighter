@@ -56,6 +56,9 @@ that does not authenticate gets none.
 
 ## Definition of done
 
-The system deploys and runs on the local Docker host and can be clicked through.
-Logic correctness is not checked here. Defects found later become a new release
+The system deploys and runs on the local Docker host and can be clicked through
+(`preflight/done-check.sh`). The journeys that walk this release's scope have been
+executed through the real UI in a dedicated test zone and passed, and that test zone
+has been removed (`preflight/journey-check.sh`). Failing journeys get at most 3 rework
+rounds before the human decides. Defects the journeys do not cover become a new release
 of `type: change`.

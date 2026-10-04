@@ -53,12 +53,14 @@ data would be the wrong trade.
 |---|---|---|
 | Lives in | `${WORKSPACE_PATH}/local-env/` | `${WORKSPACE_PATH}/local-env/test/` |
 | Owned by | the Coding Agent | the Journey Test Agent |
-| The application | started natively | built and run as a container |
-| Torn down | only when the human asks | when the human answers "tear them down" after a run |
+| Compose project | `$WORKSPACE_NAME` | `$WORKSPACE_NAME-test` |
+| The application | started natively | run as containers from the images the release deployed |
+| Torn down | only when the human asks | automatically, once the release's required journeys pass |
 
 The test zone's rules are in `knowledge/journey/AGENTS.md`. The develop zone's lifecycle
 below applies to the develop zone only. No agent tears down the develop zone because a
-journey finished.
+journey finished, and cleaning up the test zone never touches the develop zone's
+containers, volumes or data.
 
 ## Lifecycle
 
@@ -98,6 +100,8 @@ The local environment is **development scaffolding, not the definition of done**
 - Here: dependency containers, plus backend, frontend and Nginx running as host
   processes (see `knowledge/nginx/`). This is the develop phase.
 - Definition of done: the whole system deployed on the local Docker host from the
-  `deployment` repository and verified with `preflight/done-check.sh`.
+  `deployment` repository and verified with `preflight/done-check.sh`, then its
+  required journeys passed in the test zone and verified with
+  `preflight/journey-check.sh`.
 
 Getting the local environment running never counts as finishing a release.

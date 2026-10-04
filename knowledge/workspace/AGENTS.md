@@ -132,8 +132,9 @@ types. Only the git boundary moves.
 In `mono` mode:
 
 - Coding agents write files and **do not commit**. One commit is made per release,
-  after `preflight/done-check.sh` passes, so parallel agents never contend for the
-  git index and no merge step is introduced.
+  after `preflight/done-check.sh` and `preflight/journey-check.sh` pass — so journey
+  rework lands in the same commit — and parallel agents never contend for the git
+  index and no merge step is introduced.
 - There is deliberately no intermediate checkpoint inside a release.
 - `repos[].remote` stays `null`; the single remote belongs to the workspace.
 

@@ -2,7 +2,8 @@
 
 An AI agent framework for building systems in a separate workspace, designed
 around fast feedback: one human approval at the start, then agents run without
-gates until the release actually runs on a local Docker host.
+human gates until the release actually runs on a local Docker host and a real user's
+journeys through it have been executed and passed.
 
 This repository is the **framework**. It holds knowledge, rules and agent
 definitions. No product code is ever written here.
@@ -45,7 +46,8 @@ definitions. No product code is ever written here.
 └── preflight/
     ├── checker.sh             # is this machine ready to develop
     ├── mode-guard.sh          # is the framework writable
-    └── done-check.sh          # does a release meet the definition of done
+    ├── done-check.sh          # does a release deploy and run
+    └── journey-check.sh       # did its required journeys pass, and is the test zone gone
 ```
 
 ## Getting started
@@ -123,10 +125,20 @@ Workspace Init Agent        --->  creates repositories
 Coding Agent x N            --->  one per repository, in parallel
       |
       v
-release runs on local Docker host                     <- the only other check
+release runs on local Docker host  --->  done-check.sh
       |
       v
-Journey Test Agent          --->  journeys, mock data, tests; reports, never gates
+Journey Test Agent          --->  journeys, mock data, Playwright / Maestro scripts
+      |                           test zone provisioned from the deployed images
+      |                           journeys executed, desktop mode by default
+      |
+      +-- failed --> evidence --> root cause --> fix --> redeploy --> run again
+      |              (at most 3 rounds, then the human decides)
+      v
+all required journeys pass  --->  test zone removed  --->  journey-check.sh
+      |
+      v
+release locked                                        <- the only other check
 ```
 
 ## Developing versus finishing
@@ -142,15 +154,18 @@ These two look similar and are not the same thing.
 | Mobile app | emulator or simulator, driven with `adb` / `simctl` | signed build through Expo EAS |
 | Datastore access | Python tools, full privileges, local only | — |
 | Purpose | see the code work while writing it | finish the release |
-| Verified by | the agent looking at it | `preflight/done-check.sh` |
+| Verified by | the agent looking at it | `preflight/done-check.sh`, then `preflight/journey-check.sh` |
 
 An agent may start, stop and poke at the develop phase as much as it likes. None of
-it finishes a release. Only a Docker deploy that `done-check.sh` passes does.
+it finishes a release. Only a Docker deploy that `done-check.sh` passes, followed by
+required journeys that pass, does.
 
 **Journeys run somewhere else again.** The develop zone is what the human clicks
-through; a journey runs in a **test zone** with its own containers, where the
-application is built as a Docker image. A journey needs a known starting state, and the
-develop zone is full of whatever the human has been clicking on.
+through; a journey runs in a **test zone** — its own compose project, with only the
+dependencies the release uses, and the application running from the images the release
+just deployed. A journey needs a known starting state, and the develop zone is full of
+whatever the human has been clicking on. Once the journeys pass, the test zone is
+removed: containers, volumes, networks and run output. The images stay.
 
 Dependency containers belong to one workspace, are namespaced by `WORKSPACE_NAME`,
 and stay up across releases. Data survives `local-env.sh down`; only
@@ -159,19 +174,23 @@ and stay up across releases. Data survives `local-env.sh down`; only
 ## The two checkpoints
 
 1. The human approves the requirement analysis, once, before any code is written.
-2. A release deploys and runs on the local Docker host and can be clicked through,
-   verified by `preflight/done-check.sh`. An `mcp-server` has no screen, so
+2. A release is done: it deploys and runs on the local Docker host, verified by
+   `preflight/done-check.sh`, and its required journeys have run through the real UI
+   and passed in the test zone, which has then been removed, verified by
+   `preflight/journey-check.sh`. An `mcp-server` has no screen, so
    `done-check.sh --mcp` checks instead that the service is deployed, `tools/list`
    responds, and one real tool call reaches the backend.
 
 Nothing else is gated. There is no QA agent and no reviewer agent, and no agent
 judges whether its own work is good enough — that is what produces loops that never
-end. Logic defects are acceptable: they come back as a new `type: change` release
+end. The journey gate avoids that because its verdict is executed assertions, and
+because rework is **bounded at 3 rounds**: after that the loop stops and the human
+decides. Defects the journeys do not cover come back as a new `type: change` release
 and re-enter the queue.
 
 Releases run strictly one at a time in ascending order. A release that has been
-built and deployed is marked `locked` in the `requirement` repository and can never
-be edited again.
+built, deployed and has passed its journeys is marked `locked` in the `requirement`
+repository and can never be edited again.
 
 ## Rules that never bend
 
@@ -198,7 +217,8 @@ be edited again.
 - Ownership may be a directory or a single file, but no two agents ever write the same
   file.
 - Questions are asked one at a time, as numbered options with a free-text slot.
-- Journey tests report. They never gate a release.
+- A release locks only when its required journeys have **run** and passed. Rework is
+  bounded at 3 rounds, and a fix never weakens a journey.
 - All framework content and all generated artifacts are written in English.
 
 Start with `AGENTS.md` for the full rules, then `agents/AGENTS.md` for the flow.

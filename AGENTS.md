@@ -172,12 +172,25 @@ A **journey** is the ordered path a real user walks, including the steps inserte
 a later one possible. The journey **document** is written first, from the code and the
 specifications; the Playwright or Maestro script comes after it.
 
-Journeys run in a **test zone** with its own containers, separate from the develop zone
-the human clicks through, with mock data injected per journey.
+Journeys run in a **test zone** with its own containers — a separate compose project,
+running the images the release deployed — apart from the develop zone the human clicks
+through, with mock data injected per journey.
 
-**Journey tests never gate a release.** A failing journey becomes a `type: change`
-release, exactly like a defect the human finds by clicking. The Journey Test Agent is
-not a QA agent and has no veto.
+**A release locks only when its required journeys pass.** After the deploy, the Journey
+Test Agent writes or updates the journeys for the release's scope, provisions the test
+zone, and **executes** them through the real UI — desktop browser mode by default. A
+generated script that has not run proves nothing.
+
+- A failing required journey sends the release into **rework**: evidence, root cause,
+  fix, rebuild and redeploy, run again. Rework is **bounded at 3 rounds**; then the
+  loop stops and the human decides.
+- A fix never weakens a journey: no step, assertion or required journey is removed,
+  skipped or loosened to make it pass.
+- Once every required journey passes, the test zone's containers, volumes and networks
+  are removed. `preflight/journey-check.sh` verifies the pass and the cleanup.
+
+The gate is the journeys' executed assertions, not an agent's judgment. The Journey Test
+Agent is still not a QA agent or a reviewer.
 
 Full rules: `knowledge/journey/AGENTS.md`.
 

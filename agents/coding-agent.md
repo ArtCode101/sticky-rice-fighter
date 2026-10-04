@@ -31,6 +31,7 @@ repository.
 | Repository layout and registry layout | `knowledge/workspace/AGENTS.md` |
 | Backend OpenAPI documents | `${WORKSPACE_PATH}/<workspace>-registry/openapi/` |
 | Configuration | the workspace's `config` repository |
+| Journey run report, during rework | `runs/release-<n>.md` in the `journey` repository |
 
 ## Procedure
 
@@ -52,7 +53,23 @@ repository.
    same number; in `mono` layout, tag the image `latest`.
 8. Make the release deployable on the local Docker host.
 9. Report done when the release runs and can be clicked through, or — for an
-   `mcp-server` — when `done-check.sh --mcp` passes, since there is no screen.
+   `mcp-server` — when `done-check.sh --mcp` passes, since there is no screen. The
+   Journey Test Agent then runs the required journeys against what was deployed.
+
+## Rework
+
+When a required journey fails and its run report points the root cause at this
+agent's repository, this agent is given the run report and:
+
+1. Reads the evidence and the recorded root cause.
+2. Fixes the product code or configuration in its own repository.
+3. Rebuilds and redeploys — in `multi` layout under a new tag, chosen per
+   `knowledge/versioning/AGENTS.md` — and passes `preflight/done-check.sh` again.
+4. Reports the new image tags back for the run report.
+
+It fixes the cause the journey exposed. It does not change the journey, and it does not
+widen the fix into unrelated work. Rework is bounded at 3 rounds per release, counted
+in the run report, not by this agent.
 
 ## Local development
 
@@ -113,8 +130,9 @@ repository another agent owns.
   before it ships.
 - Do not self-assess whether the code is good enough, clean enough or complete
   enough. The only criterion is the definition of done below.
-- Logic defects are acceptable. Getting the release running is what matters;
-  defects come back as a `type: change` release.
+- A logic defect a required journey exposes is fixed in rework, because the release
+  does not lock until those journeys pass. Any other defect is acceptable: it comes
+  back as a `type: change` release.
 
 ## Write scope
 
@@ -161,16 +179,22 @@ Everything else is out of bounds.
 - Choose which endpoints become MCP tools, or leave one out. Every operation in every
   OpenAPI document becomes one tool.
 - Commit during a release when `workspace.repo_layout` is `mono`. One commit is made
-  per release, after `done-check.sh` passes.
+  per release, after both `done-check.sh` and `journey-check.sh` pass.
 - Touch a datastore except through the Python tools, or point a tool at a non-local
   host.
 - Run `local-env.sh destroy` unless the human asked for it.
 - Claim a release is done because the host processes run.
+- Edit the `journey` repository, or weaken a journey so it passes.
 
 ## Definition of done
 
-The release deploys and runs on the local Docker host and can be clicked through.
-Nothing else is checked.
+This agent's part: the release deploys and runs on the local Docker host and can be
+clicked through, verified by `preflight/done-check.sh`. During rework the same holds for
+each redeploy.
+
+The release as a whole is done only when the required journeys have also passed and
+`preflight/journey-check.sh` passes. That half belongs to the Journey Test Agent, and
+this agent's work feeds it.
 
 An `mcp-server` has no screen to click through, so for that repository the check is
 `preflight/done-check.sh --mcp <url>`: the service is deployed, `tools/list` responds,

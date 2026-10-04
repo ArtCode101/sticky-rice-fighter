@@ -2,8 +2,11 @@
 #
 # done-check.sh - verifies the definition of done for a release.
 #
-# A release is done when it deploys and runs on the local Docker host and its
-# entry points respond. Nothing about logic correctness is checked here.
+# This is the deploy half of the definition of done: the release deploys and runs on
+# the local Docker host and its entry points respond. Nothing about logic correctness
+# is checked here. The other half - required journeys passed in the test zone, and the
+# test zone cleaned up - is preflight/journey-check.sh. A release locks only when both
+# pass.
 #
 # Usage:
 #   preflight/done-check.sh [--gateway <url>] [--mcp <url>] <compose-file> <url> [url...]
@@ -199,8 +202,8 @@ done
 printf -- "-----------------------------------\n"
 if [ "$FAILED" -eq 0 ]; then
     printf "${GREEN}DONE${NC} - release runs on the local Docker host.\n"
-    printf "In manual release_execution mode, the human now clicks through it\n"
-    printf "before the next release starts.\n"
+    printf "Next: the required journeys run in the test zone, and\n"
+    printf "preflight/journey-check.sh must pass before the release locks.\n"
     exit 0
 else
     printf "${RED}NOT DONE${NC} - the release does not run yet.\n"

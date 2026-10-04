@@ -55,7 +55,7 @@ Every `release.md` carries a `status` in its front matter.
 |---|---|---|
 | `draft` | Analyzed, not started. Waiting in the queue. | yes |
 | `in_progress` | Currently being built. | yes |
-| `locked` | Built, deployed to the local Docker host, accepted. | **no, ever** |
+| `locked` | Built, deployed to the local Docker host, its required journeys passed. | **no, ever** |
 
 Rules:
 
@@ -88,8 +88,11 @@ Rules:
 
 - Releases run strictly one at a time, in ascending release number.
 - Release `n+1` is not started until release `n` is `locked`.
-- A release is locked when it deploys and runs, not when it is correct. Defects
-  are not a reason to keep a release open; they become a `type: change` release.
+- A release is locked when it deploys and runs **and its required journeys pass**
+  (`preflight/done-check.sh` and `preflight/journey-check.sh`), not when it is
+  correct in every respect. A failing required journey keeps the release
+  `in_progress` through at most 3 rework rounds; then the human decides. Any other
+  defect is not a reason to keep a release open; it becomes a `type: change` release.
 
 ## Language
 
