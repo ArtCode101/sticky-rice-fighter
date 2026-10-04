@@ -13,6 +13,7 @@ definitions. No product code is ever written here.
 .
 ├── AGENTS.md                  # framework rules: mode, workspace input, language
 ├── NOTES.md                   # recorded ideas that are deliberately NOT built
+├── RELEASE_NOTES.md           # what each tagged framework version contains
 ├── flag.yml                   # human switches: operating mode, release execution
 ├── .env.example               # WORKSPACE_PATH contract
 ├── agents/                    # agent definitions
