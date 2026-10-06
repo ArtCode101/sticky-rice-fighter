@@ -28,6 +28,8 @@ This agent does not write product code.
 | Question protocol | `knowledge/questions/AGENTS.md` |
 | Login methods and provider setup | `knowledge/auth/AGENTS.md` |
 | Mobile rules | `knowledge/mobile/AGENTS.md` |
+| Gateway rule | `knowledge/nginx/AGENTS.md` |
+| Flow and ownership | `agents/AGENTS.md` |
 
 ## Procedure
 
@@ -41,55 +43,51 @@ This agent does not write product code.
 4. **Backend split.** Derive the features, group them by domain, and decide how
    many backend repositories are needed. One repository per domain. The count is
    whatever the analysis produces; it is not fixed.
-4b. **Mobile.** Decide whether the requirement implies a mobile application. If it
+5. **Mobile.** Decide whether the requirement implies a mobile application. If it
    does, one `mobile` repository per user group, split the same way the frontends are.
    Then **ask** whether this project needs **push notifications** — not wanted means
    `expo-notifications` is never added. See `knowledge/mobile/AGENTS.md`.
-5. **Batch jobs and listeners.** Decide whether the requirement implies scheduled
+6. **Batch jobs and listeners.** Decide whether the requirement implies scheduled
    work or queue/stream consumers. Each batch job and each listener gets its **own**
    repository, never a shared one, and its single responsibility must be stated in
    writing so the coding agent knows what that repository is for.
-6. **Gateway.** If the release has both a frontend and a backend, the workspace needs
-   the Nginx gateway: every caller reaches the backend through Nginx only. Record the
+7. **Gateway.** Every workspace that has a backend has the Nginx gateway, and every
+   caller reaches the backend through it (`knowledge/nginx/AGENTS.md`). Record the
    route each backend gets.
-7. **MCP server.** Read `workspace.mcp_server` from the manifest. If it is `true`, the
+8. **MCP server.** Read `workspace.mcp_server` from the manifest. If it is `true`, the
    workspace needs one `mcp-server` repository. Do **not** ask the human again — the
    answer was given at initialization — and do **not** decide to add one when the
    field is `false`.
    - There is at most one, whatever the number of backend domains.
-   - Do **not** choose which endpoints become tools. Every operation in every
-     backend's OpenAPI document becomes one tool, mechanically, at build time. There
-     is nothing to design and nothing to list here.
+   - The `mcp-server` is **always in its own release**, placed after the release that
+     builds the backends it wraps, because it is generated from the OpenAPI documents
+     those backends publish. After any later release that changes a backend's API, the
+     next release regenerates the `mcp-server`. Never put it in the same release as a
+     backend whose API it wraps.
+   - Do **not** choose which endpoints become tools. That mapping is mechanical, at
+     build time (`knowledge/mcp/AGENTS.md`).
    - The backend that owns authentication needs a token exchange endpoint, because the
-     MCP server holds no signing key. Record that as scope on that backend.
-8. **Authentication.** For every user group, decide whether it authenticates.
-   - **Ask which login method.** A requirement that says "the system has login" has not
-     said how. Offer the methods from `knowledge/auth/AGENTS.md` as options. Username
-     and password is on the list but is **never** the recommended option.
-   - For a method that needs provider setup, **ask** whether the agent does it through
-     the provider's CLI or the human does it in the portal with a numbered menu.
-   - Tokens: the **identity token is JWE**, encrypted and unreadable. Data the frontend
-     has to display may be **JWS**.
-   - Signing is **RS256** with a key pair, private key signs and public key verifies.
-   - Every authentication group gets its **own RSA key pair**, and **every environment
-     gets its own** as well. Nothing is shared in either direction.
-   - A user group that does not need to prove identity gets no key pair at all.
-   - A user group that does not authenticate is not given a login method.
-9. **Release breakdown.** Split the work into releases. Release 1 is always the
+     MCP server holds no key. Record that as scope on that backend.
+9. **Authentication.** For every user group, decide whether it authenticates.
+   - **Ask which login method**, and for a method that needs provider setup, **ask** who
+     does the setup. The options, the token format and the keys are all defined in
+     `knowledge/auth/AGENTS.md`; follow it rather than restating it.
+   - A user group that does not authenticate gets no login method and no keys.
+10. **Release breakdown.** Split the work into releases. Release 1 is always the
    system skeleton. Later releases carry core and supporting features; how they
-   are grouped is this agent's call.
-10. **Write the specifications** into the `requirement` repository, following
+   are grouped is this agent's call, apart from the MCP placement in step 8.
+11. **Write the specifications** into the `requirement` repository, following
    `knowledge/requirement/AGENTS.md`: one directory per release, `release.md` for
    scope, one file per screen under `screens/`. Every release starts at
    `status: draft`.
-11. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`, all with
+12. **Append phase 2 repositories** to `${WORKSPACE_PATH}/workspace.yaml`, all with
     `phase: 2`: the frontend repositories from step 3, the backend repositories from
-    step 4, the mobile repositories from step 4b, the batch and listener repositories
-    from step 5, the `mcp-server` repository from step 7 if the manifest asks for one,
-    the `journey` repository once the release produces a clickable system, and the
-    `tool` repository if the release needs datastore access. Do not create the repositories here; the
-    Workspace Init Agent creates them once the analysis is approved.
-12. **Stop and ask the human to approve.** Do not start any coding agent.
+    step 4, the mobile repositories from step 5, the batch and listener repositories
+    from step 6, the `mcp-server` repository from step 8 if the manifest asks for one,
+    the `journey` repository once a release produces a screen a user walks through, and
+    the `tool` repository if any release needs datastore access. Do not create the
+    repositories here; the Release Agent creates them once the analysis is approved.
+13. **Stop and ask the human to approve.** Do not start any coding agent.
 
 ## Screen specifications
 
@@ -117,7 +115,8 @@ Each screen file must state:
 
 The human reviews the release breakdown and the screen specifications and either
 approves or asks for changes. While a release is `draft`, this agent may edit it
-freely in place. Nothing downstream starts until the human approves.
+freely in place. Nothing downstream starts until the human approves; then the Release
+Agent takes over (`agents/release-agent.md`).
 
 ## Must not
 
@@ -131,6 +130,7 @@ freely in place. Nothing downstream starts until the human approves.
 - Add an `mcp-server` repository when `workspace.mcp_server` is `false`, or ask the
   human that question again. It was answered at initialization.
 - Decide which endpoints become MCP tools. That mapping is mechanical.
+- Put the `mcp-server` in the same release as a backend whose API it wraps.
 - Assume a login method because the requirement did not name one, or recommend username
   and password.
 - Add push notifications to a project that did not ask for them.

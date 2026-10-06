@@ -14,7 +14,7 @@
 
 services:
   redis:
-    image: redis:8.2
+    image: redis:8.2.10
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-redis
 
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-artpassword}"]

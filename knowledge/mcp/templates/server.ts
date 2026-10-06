@@ -23,7 +23,7 @@ const Config = z.object({
   // The Nginx gateway. Never a backend port.
   GATEWAY_URL: z.string().url(),
 
-  // The backend endpoint that exchanges a caller's token for a JWT RS256.
+  // The backend endpoint that exchanges a caller's token for the identity token.
   TOKEN_EXCHANGE_PATH: z.string().default('/api/auth/token-exchange'),
 
   // stdio for local development, streamable-http when deployed.
@@ -53,7 +53,7 @@ switch (config.MCP_TRANSPORT) {
   }
   case 'streamable-http': {
     // Deployed. The caller arrives with an OAuth 2.1 token, which every tool
-    // exchanges for a JWT RS256 at the backend before calling through the gateway.
+    // exchanges for the identity token at the backend before calling through the gateway.
     await server.connect(
       new StreamableHttpServerTransport({ port: config.MCP_PORT }),
     );

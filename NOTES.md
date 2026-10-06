@@ -79,11 +79,11 @@ iteration.
 Raised 2026-10-03 while deciding the login patterns. Each was explicitly put off, not
 forgotten.
 
-- **Where key material lives.** The human asked for a recommendation but said "ยังไม่ต้อง
-  ตัดสินใจตอนนี้" — not now. What *is* decided: RS256 with a key pair, a separate pair per
+- **Where key material lives.** The human asked for a recommendation but said "no need
+  to decide this now". What *is* decided: RS256 with a key pair, a separate pair per
   environment, and private keys never committed. Where the pair is stored is open.
 - **Token lifetime and refresh.** How long an access token lasts and whether there is a
-  refresh token. "ติดไว้ก่อน".
+  refresh token. The human's words: "park it for now".
 - **Key rotation.** How a key pair is replaced without invalidating every live token at
   once. Deferred with the item above.
 
@@ -107,7 +107,7 @@ These are gaps in the rules as written, not features:
 
 ## Mobile, second tier
 
-Raised 2026-10-03 and set aside as "ของรอง" — secondary:
+Raised 2026-10-03 and set aside by the human as "secondary":
 
 - **Internationalization**, if an app has to support more than one language.
 - **Error tracking**, Sentry or similar.

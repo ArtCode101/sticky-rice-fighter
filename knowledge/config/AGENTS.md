@@ -30,7 +30,7 @@ It is created empty in phase 1 and filled in as releases need it.
 │   └── sys/
 │       └── .env.example
 ├── keys/
-│   └── README.md          # how key pairs are laid out; never the keys themselves
+│   └── README.md          # how keys are laid out; never the keys themselves
 └── README.md
 ```
 
@@ -39,28 +39,41 @@ It is created empty in phase 1 and filled in as releases need it.
 
 ## Authentication keys
 
-Each authentication group has its own RS256 key pair, as decided by the
-Requirement Analysis Agent.
+Which keys exist, and who holds which half, is defined once in `knowledge/auth/AGENTS.md`:
+every authentication group has a **signing** pair and an **encryption** pair, **per
+environment**. This file defines only where they are laid out.
 
-- Key pairs are generated per authentication group. Two groups never share one.
-- A user group that does not authenticate has no key pair.
+```text
+keys/
+├── README.md                      # which groups and environments exist; never key material
+└── <group>/
+    └── <environment>/             # local, dev, sys, ...
+        ├── sign-private.pem       # never committed
+        ├── sign-public.pem
+        ├── enc-private.pem        # never committed
+        └── enc-public.pem
+```
+
 - Private keys are **never** committed to any repository. `keys/README.md` records
-  which groups exist, the expected file names and how to generate them; the key
-  material itself stays out of git.
-- Public keys may be committed if a service needs them to verify tokens.
+  which groups and environments exist, the expected file names and how to generate them;
+  the key material itself stays out of git.
+- Public keys may be committed if a service needs them.
+- A user group that does not authenticate has no directory here.
 
-Generate a pair with:
+Generate one environment's keys for one group with:
 
 ```bash
-openssl genrsa -out <group>-private.pem 2048
-openssl rsa -in <group>-private.pem -pubout -out <group>-public.pem
+openssl genrsa -out sign-private.pem 2048
+openssl rsa -in sign-private.pem -pubout -out sign-public.pem
+openssl genrsa -out enc-private.pem 2048
+openssl rsa -in enc-private.pem -pubout -out enc-public.pem
 ```
 
 ## The MCP server's local credential
 
 When the workspace has an `mcp-server`, the develop phase runs it on stdio, where
 there is no HTTP layer and therefore no OAuth flow. It exchanges a local credential
-for a JWT RS256 at the backend instead.
+for the system's identity token at the backend instead.
 
 That credential is a configuration value like any other:
 
@@ -72,8 +85,7 @@ That credential is a configuration value like any other:
 - Deployed, there is no such credential: the caller arrives with an OAuth 2.1 token
   and that is what gets exchanged.
 
-The MCP server never has a private key or an RSA key pair of its own. It is not an
-authentication group. See `knowledge/mcp/AGENTS.md`.
+The MCP server never has a key of its own. It is not an authentication group. See `knowledge/mcp/AGENTS.md`.
 
 ## Mobile configuration is embedded at build time
 

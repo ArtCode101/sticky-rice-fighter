@@ -39,10 +39,15 @@ That gate is the journeys' own assertions, not this agent's opinion:
 | Datastore access tools | `knowledge/tools/AGENTS.md` |
 | Question protocol | `knowledge/questions/AGENTS.md` |
 | Test zone and dependency containers | `knowledge/local-env/AGENTS.md` |
+| Gateway rule | `knowledge/nginx/AGENTS.md` |
+| Image tags | `knowledge/versioning/AGENTS.md` |
+| Deploy layout | `knowledge/deployment/AGENTS.md` |
+| Flow and ownership | `agents/AGENTS.md` |
 
 ## Procedure
 
-Starts once the release has deployed and `preflight/done-check.sh` has passed.
+The Release Agent starts it once the release has deployed and
+`preflight/done-check.sh` has passed.
 
 1. **Read** the release and screen specifications, then the source code of the
    repositories the release touched. Both: the specification says what was asked for,
@@ -61,25 +66,31 @@ Starts once the release has deployed and `preflight/done-check.sh` has passed.
 7. **Ask which mode** to run in, once per release — desktop is recommended and is the
    default. Skip the question when a journey needs a human to click; that forces
    desktop.
-8. **Run every required journey**, injecting each one's mock data first, and record
-   each result in the run report.
+8. **Run every required journey**, injecting each one's mock data first. Keep the test
+   runner's own machine-readable result for the run — Playwright's JSON report and
+   Maestro's JUnit report, under `runs/release-<n>/` as `knowledge/journey/AGENTS.md`
+   names them — set `last_run`, and record each journey's result in the run report
+   from that output, never from memory.
 9. **If any required journey failed**, and fewer than 3 rework rounds have been used:
    1. Record the evidence: the failing step, trace, screenshot, container logs.
    2. Record the root cause and the repository it points to.
    3. If it points to product code or its configuration, hand the run report to the
-      Coding Agent that owns that repository. It fixes, rebuilds, redeploys and passes
-      `done-check.sh` again; point the test zone at the new images.
+      Release Agent, which passes it to the Coding Agent that owns that repository,
+      redeploys and passes `done-check.sh` again; point the test zone at the new image
+      tags it reports.
       If it points to a script, mock data or the test zone, fix it here — without
       weakening the journey.
    4. Go back to step 8 and run **all** required journeys again.
 10. **If the rounds have run out**, keep the test zone up, set `result: exhausted`, and
     ask the human the question in `knowledge/journey/AGENTS.md`. That question has no
-    recommended option and is always asked.
+    recommended option and is always asked. Record the answer in `human_decisions`
+    exactly as `knowledge/journey/AGENTS.md` says, and tell the Release Agent.
 11. **When every required journey has passed**, clean up without asking: remove the test
-    zone's containers, volumes and networks, and delete temporary run output. Set
-    `result: passed` and `cleaned_up: true`.
-12. **Run `preflight/journey-check.sh runs/release-<n>.md`**, and report what ran, what
-    failed along the way and what fixed it.
+    zone's containers, volumes and networks, and delete temporary run output — never
+    the runner reports under `runs/`. Set `result: passed` and `cleaned_up: true`.
+12. **Run `preflight/journey-check.sh runs/release-<n>.md`**, and report to the Release
+    Agent what ran, what failed along the way and what fixed it. The Release Agent
+    locks the release; this agent does not.
 
 ## Write scope
 
@@ -97,7 +108,12 @@ one. A defect in product code is fixed by the Coding Agent that owns that reposi
 - Run more than 3 rework rounds without asking the human.
 - Make a journey pass by removing, skipping or loosening a step, an assertion or a
   required journey, or by changing the required list after the first run.
-- Count a generated script as a passed journey.
+- Count a generated script as a passed journey, or record a result the runner's report
+  does not show.
+- Delete or edit a runner report under `runs/`.
+- Record a human decision the human did not give, or set `result: accepted` without
+  one.
+- Lock a release.
 - Review code, judge its quality, or ask another agent for anything beyond fixing the
   root cause a failed journey recorded.
 - Write product code, or write into a `backend`, `frontend`, `mobile`, `tool`,

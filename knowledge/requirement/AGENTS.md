@@ -49,7 +49,9 @@ project generation.
 
 ## Status and locking
 
-Every `release.md` carries a `status` in its front matter.
+Every `release.md` carries a `status` in its front matter. The Requirement Analysis
+Agent writes `draft`; the **Release Agent** is the only agent that changes it, and the
+only one that fills in `deployed_at` and `commit` (`agents/release-agent.md`).
 
 | Status | Meaning | Editable |
 |---|---|---|
@@ -59,9 +61,10 @@ Every `release.md` carries a `status` in its front matter.
 
 Rules:
 
-- When a release meets the definition of done, set `status: locked`, `deployed_at`
-  to the date, and `commit` to the commit that satisfied the release, then commit.
-  That commit is the lock.
+- When a release starts, the Release Agent sets `status: in_progress`.
+- When a release meets the definition of done, the Release Agent sets
+  `status: locked`, `deployed_at` to the date, and `commit` to the commit that
+  satisfied the release, then commits. That commit is the lock.
 - `commit` is what ties an approved specification to the code that delivered it. In
   `mono` layout it is the one commit made for that release. In `multi` layout it is
   one hash per repository the release touched, listed as a map:

@@ -1,8 +1,8 @@
 # Workspace manifest.
 #
 # Lists every repository that belongs to this workspace, its type, and the phase
-# in which it is created. The Workspace Init Agent reads this file and creates
-# the repositories in phase order.
+# in which it is created. The Workspace Init Agent creates the phase 1 repositories;
+# the Release Agent creates the phase 2 ones once the requirement analysis is approved.
 #
 # This file lives in the workspace (at WORKSPACE_PATH), not in the framework
 # repository, because it grows as new repositories are identified.
@@ -18,7 +18,8 @@ workspace:
 
   # Whether the human asked for an MCP server over this system's backend API.
   # Asked at initialization, every time. When the human does not answer, or says no,
-  # this stays false and nothing MCP-related is generated.
+  # this stays false and nothing MCP-related is generated. The Release Agent may set it
+  # to true later, only on the human's direct request.
   mcp_server: false
 
   # Whether agents may take the option they recommend without stopping to ask.

@@ -44,15 +44,12 @@ Leave this section empty if the release has no user interface.
 
 ## Authentication
 
-| User group | Requires login | Login method | Key pair |
+| User group | Requires login | Login method | Keys |
 |---|---|---|---|
-| ... | yes / no | the method the human chose | own RS256 key pair / none |
+| ... | yes / no | the method the human chose | own signing and encryption pairs per environment / none |
 
 The login method is whatever the human picked from the options in
-`knowledge/auth/AGENTS.md`; it is never assumed. The identity token is **JWE**,
-encrypted; data the frontend displays may be **JWS**. Signing is RS256 with a key pair.
-Each authentication group gets its own pair and each environment gets its own; a group
-that does not authenticate gets none.
+`knowledge/auth/AGENTS.md`; it is never assumed. Token format and keys follow that file.
 
 ## Definition of done
 

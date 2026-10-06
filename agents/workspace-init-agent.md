@@ -38,7 +38,8 @@ This agent does not analyze requirements and does not write product code.
      independent, so they may be created in any order or in parallel.
    - `mono`: run `git init` **once** at `${WORKSPACE_PATH}`, create
      `${WORKSPACE_PATH}/<name>/` for every entry with `phase: 1` as a directory
-     inside it, and make one initial commit covering all of them.
+     inside it, add `.locks/` to the workspace root's `.gitignore` (see the shared-file
+     lock in `agents/AGENTS.md`), and make one initial commit covering all of them.
 8. Give each created repository a `README.md` naming the repository and its type.
    The `deployment` and `config` repositories stay otherwise empty: their scripts
    and configuration are added later, not here.
@@ -86,8 +87,9 @@ Do you want an MCP server for this system, so an outside AI agent can drive it?
   was not asked for.
 - Write the answer to `workspace.mcp_server`.
 - A `false` here is not a permanent refusal. If the human later asks for an MCP server
-  directly, it gets built and the field is set to `true`. The field stops agents from
-  asking again; it does not override an instruction.
+  directly, the Release Agent sets the field to `true`; see
+  `agents/release-agent.md`. The field stops agents from asking again; it does not
+  override an instruction.
 
 ### 3. May agents take the option they recommend, without asking?
 
@@ -123,14 +125,14 @@ anything. The framework still has exactly the two checkpoints in `agents/AGENTS.
 
 ## Must not
 
-- Create any `phase: 2` repository. Backend, frontend and `mcp-server` repositories
-  are created only after the requirement analysis is approved.
+- Create any `phase: 2` repository. The Release Agent creates them once the requirement
+  analysis is approved.
 - Skip any of the three questions, or answer one on the human's behalf before they have
   had the chance to.
 - Ask the three questions in one message. One at a time.
 - Apply `auto_recommend` to question 3 itself.
 - Change `repo_layout`, `mcp_server` or `auto_recommend` once they are written. Only the
-  human revisits those.
+  human revisits those; the single exception is in `agents/release-agent.md`.
 - Write any file inside the framework repository.
 - Store a local host path in the manifest or the registry.
 - Write product code, deploy scripts or configuration content.

@@ -7,7 +7,9 @@
 # cleaned up. A release locks only when both scripts pass.
 #
 # It reads the front matter of the release's run report (from
-# knowledge/journey/templates/run-report.md) and asks Docker whether anything of the
+# knowledge/journey/templates/run-report.md), checks every required journey against
+# the test runner's own report for the last run (runs/release-<n>/run-<k>.web.json from
+# Playwright, run-<k>.mobile.xml from Maestro), and asks Docker whether anything of the
 # test zone's compose project is left behind.
 #
 # Usage:
@@ -46,67 +48,164 @@ if [ ! -f "$REPORT" ]; then
     exit 1
 fi
 
-# The front matter is everything between the first two '---' lines.
-FRONT="$(awk 'NR==1 && $0=="---" {inside=1; next} inside && $0=="---" {exit} inside {print}' "$REPORT")"
-if [ -z "$FRONT" ]; then
-    printf "${RED}[FAIL]${NC} no front matter in %s\n" "$REPORT"
+if ! command -v python3 >/dev/null 2>&1; then
+    printf "${RED}[FAIL]${NC} python3 is required (see preflight/checker.sh)\n"
     exit 1
 fi
 
-# Top-level scalar from the front matter, without its trailing comment.
-field() {
-    printf '%s\n' "$FRONT" \
-        | grep -E "^$1:" \
-        | head -n 1 \
-        | sed -E "s/^$1:[[:space:]]*//; s/[[:space:]]*#.*$//; s/^[\"']//; s/[\"']$//"
-}
+# 1-3. The run report and the runner reports. Python prints one line per check,
+#      "OK <message>" or "FAIL <message>", and a final "PROJECT <name>" line.
+# The script is read into a variable first: bash 3.2, the macOS default, cannot parse a
+# quoted heredoc inside $(...).
+read -r -d '' CHECK_SCRIPT <<'PY'
+import json, os, re, sys
+import xml.etree.ElementTree as ET
 
-RESULT="$(field result)"
-CLEANED="$(field cleaned_up)"
-PROJECT="$(field test_project)"
+report = sys.argv[1]
+out = []
+ok = lambda m: out.append("OK " + m)
+bad = lambda m: out.append("FAIL " + m)
 
-# 1. The run's overall result. 'accepted' means the human chose "lock anyway" after
-#    the rework rounds ran out; it is the only way a failing journey reaches a lock.
-case "$RESULT" in
-    passed)   pass "Run result: passed" ;;
-    accepted) pass "Run result: accepted by the human after the rework rounds ran out" ;;
-    "")       fail "Run report has no result" ;;
-    *)        fail "Run result is '$RESULT', not passed" ;;
-esac
+lines = open(report, encoding="utf-8").read().splitlines()
+if not lines or lines[0].strip() != "---":
+    print("FAIL no front matter in " + report); print("PROJECT "); sys.exit(0)
+front = []
+for line in lines[1:]:
+    if line.strip() == "---":
+        break
+    front.append(line)
 
-# 2. Every required journey. Entries are the indented 'slug: status' lines under
-#    'journeys:'. A required journey that never ran is as unfinished as one that failed.
-JOURNEYS="$(printf '%s\n' "$FRONT" \
-    | awk '/^journeys:/ {inside=1; next} inside && /^[^[:space:]]/ {exit} inside {print}' \
-    | sed -E 's/[[:space:]]*#.*$//' \
-    | grep -E '^[[:space:]]+[^[:space:]]+:' || true)"
+def strip(v):
+    v = re.sub(r"\s+#.*$", "", v).strip()
+    return v.strip("\"'")
 
-if [ -z "$JOURNEYS" ]; then
-    fail "Run report lists no required journeys"
-else
-    while IFS= read -r line; do
-        slug="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+([^:]+):.*/\1/')"
-        status="$(printf '%s' "$line" | sed -E 's/^[^:]+:[[:space:]]*//')"
-        if [ "$status" = "passed" ]; then
-            pass "Journey passed: $slug"
-        elif [ "$RESULT" = "accepted" ]; then
-            pass "Journey $status, accepted by the human: $slug (becomes a type: change release)"
-        else
-            fail "Journey $status: $slug"
-        fi
-    done <<< "$JOURNEYS"
-fi
+scalars, journeys, decisions, current = {}, {}, [], None
+for line in front:
+    if not line.strip() or line.lstrip().startswith("#"):
+        continue
+    if not line[0].isspace():
+        key, _, value = line.partition(":")
+        key, value = key.strip(), strip(value)
+        current = key
+        if key == "human_decisions" and value.startswith("["):
+            decisions = [strip(x) for x in value.strip("[]").split(",") if strip(x)]
+        else:
+            scalars[key] = value
+    elif current == "journeys" and ":" in line:
+        slug, _, status = line.strip().partition(":")
+        journeys[slug.strip()] = strip(status)
+    elif current == "human_decisions" and line.strip().startswith("-"):
+        decisions.append(strip(line.strip()[1:]))
 
-# 3. The report must say the test zone was cleaned up...
-if [ "$CLEANED" = "true" ]; then
-    pass "Run report records cleanup"
-else
-    fail "Run report does not record cleanup (cleaned_up: ${CLEANED:-missing})"
-fi
+result = scalars.get("result", "")
+accepted = result == "accepted"
 
-# 4. ...and Docker must agree. Nothing labelled with the test zone's compose project may
-#    be left: no container, no volume (the test data), no network. Images are not
-#    checked; they belong to the deploy.
+# 1. The run's overall result. 'accepted' is valid only when the human's last
+#    recorded answer was "lock anyway".
+if result == "passed":
+    ok("Run result: passed")
+elif accepted and decisions and decisions[-1] == "lock-anyway":
+    ok("Run result: accepted by the human after the rework rounds ran out")
+elif accepted:
+    bad("Run result is 'accepted' but the last human decision is not lock-anyway")
+elif not result:
+    bad("Run report has no result")
+else:
+    bad("Run result is '%s', not passed" % result)
+
+# 2. Rounds stay within the bound: 3, plus 3 for each recorded "three more rounds".
+try:
+    rounds = int(scalars.get("rounds", ""))
+    max_rounds = int(scalars.get("max_rounds", "3"))
+    allowed = 3 * (1 + decisions.count("more-rounds"))
+    if max_rounds != allowed:
+        bad("max_rounds is %d, but the recorded decisions allow %d" % (max_rounds, allowed))
+    elif rounds > max_rounds:
+        bad("%d rework rounds used, more than the %d allowed" % (rounds, max_rounds))
+    else:
+        ok("Rework rounds within bound: %d of %d" % (rounds, max_rounds))
+except ValueError:
+    bad("Run report has no numeric rounds / max_rounds")
+
+# 3. Every required journey, in the run report and in the runner's own report.
+last_run = scalars.get("last_run", "")
+base = os.path.join(os.path.dirname(os.path.abspath(report)),
+                    os.path.splitext(os.path.basename(report))[0])
+runner = {}
+web = os.path.join(base, "run-%s.web.json" % last_run)
+mobile = os.path.join(base, "run-%s.mobile.xml" % last_run)
+
+def walk(suite, file_name):
+    file_name = suite.get("file") or file_name
+    for spec in suite.get("specs", []):
+        slug = os.path.basename(spec.get("file") or file_name or "")
+        slug = re.sub(r"\.spec\.ts$", "", slug)
+        statuses = [t.get("status") for t in spec.get("tests", [])]
+        good = bool(statuses) and all(s == "expected" for s in statuses)
+        runner[slug] = runner.get(slug, True) and good
+    for child in suite.get("suites", []):
+        walk(child, file_name)
+
+if not last_run:
+    bad("Run report has no last_run")
+else:
+    found = False
+    if os.path.isfile(web):
+        found = True
+        try:
+            for suite in json.load(open(web, encoding="utf-8")).get("suites", []):
+                walk(suite, None)
+        except (ValueError, AttributeError):
+            bad("Unreadable Playwright report: " + web)
+    if os.path.isfile(mobile):
+        found = True
+        try:
+            for case in ET.parse(mobile).iter("testcase"):
+                failed = case.find("failure") is not None or case.find("error") is not None
+                runner[case.get("name", "")] = runner.get(case.get("name", ""), True) and not failed
+        except ET.ParseError:
+            bad("Unreadable Maestro report: " + mobile)
+    if not found:
+        bad("No runner report for run %s under %s" % (last_run, base))
+
+if not journeys:
+    bad("Run report lists no required journeys")
+for slug, status in journeys.items():
+    in_runner = runner.get(slug)
+    if status == "passed" and in_runner:
+        ok("Journey passed: %s (runner report agrees)" % slug)
+    elif status == "passed" and in_runner is None:
+        bad("Journey %s is marked passed but is not in the runner report of run %s" % (slug, last_run))
+    elif status == "passed":
+        bad("Journey %s is marked passed but the runner report says it failed" % slug)
+    elif accepted and decisions and decisions[-1] == "lock-anyway":
+        ok("Journey %s, accepted by the human: %s (becomes a type: change release)" % (status, slug))
+    else:
+        bad("Journey %s: %s" % (status, slug))
+
+# 4a. The report must say the test zone was cleaned up.
+if scalars.get("cleaned_up") == "true":
+    ok("Run report records cleanup")
+else:
+    bad("Run report does not record cleanup (cleaned_up: %s)" % (scalars.get("cleaned_up") or "missing"))
+
+print("\n".join(out))
+print("PROJECT " + scalars.get("test_project", ""))
+PY
+CHECKS="$(python3 -c "$CHECK_SCRIPT" "$REPORT")"
+
+PROJECT=""
+while IFS= read -r line; do
+    case "$line" in
+        "OK "*)      pass "${line#OK }" ;;
+        "FAIL "*)    fail "${line#FAIL }" ;;
+        "PROJECT "*) PROJECT="${line#PROJECT }" ;;
+    esac
+done <<< "$CHECKS"
+
+# 4b. ...and Docker must agree. Nothing labelled with the test zone's compose project may
+#     be left: no container, no volume (the test data), no network. Images are not
+#     checked; they belong to the deploy.
 if [ -z "$PROJECT" ]; then
     fail "Run report has no test_project"
 elif ! docker info >/dev/null 2>&1; then
@@ -139,12 +238,12 @@ fi
 
 printf -- "-----------------------------------\n"
 if [ "$FAILED" -eq 0 ]; then
-    if [ "$RESULT" = "accepted" ]; then
+    if grep -qE '^result:[[:space:]]*accepted' "$REPORT"; then
         printf "${GREEN}DONE${NC} - the human accepted the failing journeys and the test zone is gone.\n"
     else
         printf "${GREEN}DONE${NC} - required journeys passed and the test zone is gone.\n"
     fi
-    printf "With done-check.sh also passing, the release may be locked.\n"
+    printf "With done-check.sh also passing, the Release Agent may lock the release.\n"
     exit 0
 else
     printf "${RED}NOT DONE${NC} - the release does not lock yet.\n"

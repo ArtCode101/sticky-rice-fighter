@@ -8,27 +8,32 @@ journeys through it have been executed and passed.
 This repository is the **framework**. It holds knowledge, rules and agent
 definitions. No product code is ever written here.
 
+This README is an overview for people. Every rule lives in exactly one file, listed in
+**Where each rule lives** in `AGENTS.md`; when this page and that file disagree, the
+file is right.
+
 ## Layout
 
 ```text
 .
-├── AGENTS.md                  # framework rules: mode, workspace input, language
+├── AGENTS.md                  # framework rules, and where every other rule lives
 ├── NOTES.md                   # recorded ideas that are deliberately NOT built
-├── RELEASE_NOTES.md           # what each tagged framework version contains
+├── RELEASE_NOTES.md           # what each framework version contains
 ├── flag.yml                   # human switches: operating mode, release execution
 ├── .env.example               # WORKSPACE_PATH contract
 ├── agents/                    # agent definitions
-│   ├── AGENTS.md              # flow, gates, concurrency, priority
+│   ├── AGENTS.md              # flow, gates, concurrency, file ownership
 │   ├── workspace-init-agent.md
 │   ├── requirement-analysis-agent.md
+│   ├── release-agent.md
 │   ├── coding-agent.md
 │   └── journey-test-agent.md
 ├── knowledge/
-│   ├── tech-stack.yaml        # fixed languages, frameworks, libraries, versions
+│   ├── tech-stack.yaml        # fixed languages, frameworks, libraries, exact versions
 │   ├── workspace/             # workspace manifest schema and template
 │   ├── requirement/           # release and screen spec templates, locking rules
 │   ├── questions/             # the one shape every question to the human takes
-│   ├── auth/                  # login patterns, provider setup, token rules
+│   ├── auth/                  # login patterns, provider setup, token and key rules
 │   ├── mobile/                # React Native and Expo applications
 │   ├── journey/               # user journeys, mock data and journey tests
 │   ├── versioning/            # git tags and image tags, by repository layout
@@ -38,7 +43,7 @@ definitions. No product code is ever written here.
 │   ├── mcp/                   # the MCP server generated over the backend API
 │   ├── tools/                 # the only sanctioned datastore access path
 │   ├── deployment/            # deploy layout and local deploy template
-│   ├── config/                # config layout and key-pair rules
+│   ├── config/                # config layout and key layout
 │   ├── database/              # PostgreSQL knowledge and compose template
 │   ├── redis/                 # Redis knowledge and compose template
 │   ├── kafka/                 # Kafka knowledge and compose template
@@ -73,154 +78,45 @@ Both live in `flag.yml` and only the human changes them.
 Keep `mode: working` whenever agents are building a system. Switch to `edit` only
 to change the framework itself.
 
-## How agents ask
-
-Every question any agent asks takes one shape: numbered options, one line each saying
-what it means, a free-text slot last, and **one question at a time**.
-
-```text
-Which login method should this system use?
-
-  1. Google / Gmail        — OAuth; needs a Google Cloud project  [recommended]
-  2. LINE                  — OAuth; set up by hand in LINE Developers Console
-  3. Username and password — no provider to set up; weakest of the three
-  4. Something else        — type your answer
-```
-
-A wall of ten or twenty questions is the failure this replaces. Full rules:
-`knowledge/questions/AGENTS.md`.
-
-## Three questions at initialization
-
-The Workspace Init Agent asks the human three things, every time, one at a time, and
-writes all three answers into `workspace.yaml` so nothing asks again.
-
-| Question | When the human does not answer |
-|---|---|
-| Monorepo or multi-repo? | **`mono`** — one git repository at the workspace root. Work is not blocked on a decision. |
-| Do you want an MCP server? | **`false`** — nothing is built. Nothing is generated that was not asked for. |
-| May agents take the recommended option without asking? | **`false`** — every question is asked. |
-
-The first two defaults point in opposite directions on purpose. An agent never answers
-the layout question on the human's behalf while they still have the chance to, and a
-`false` on the MCP question is not permanent: a direct request later still gets built.
-
-`auto_recommend: true` does not silence every question. A decision where no option is
-clearly best is still brought to the human, because there is no recommendation to apply.
-
-These are inputs, not gates. The framework still has exactly two checkpoints.
-
 ## How a build runs
 
 ```text
+Workspace Init Agent        --->  phase 1 repositories, three questions
+      |
 raw requirement (any language)
       |
       v
 Requirement Analysis Agent  --->  human approves      <- the only gate
       |
       v
-Workspace Init Agent        --->  creates repositories
+Release Agent               --->  creates phase 2 repositories, starts the release
       |
       v
 Coding Agent x N            --->  one per repository, in parallel
       |
       v
-release runs on local Docker host  --->  done-check.sh
+Release Agent               --->  deploys, done-check.sh
       |
       v
-Journey Test Agent          --->  journeys, mock data, Playwright / Maestro scripts
-      |                           test zone provisioned from the deployed images
-      |                           journeys executed, desktop mode by default
-      |
-      +-- failed --> evidence --> root cause --> fix --> redeploy --> run again
-      |              (at most 3 rounds, then the human decides)
+Journey Test Agent          --->  journeys executed in a test zone
+      |                           failed -> rework, at most 3 rounds, then you decide
       v
-all required journeys pass  --->  test zone removed  --->  journey-check.sh
+all required journeys pass  --->  journey-check.sh
       |
       v
-release locked                                        <- the only other check
+Release Agent               --->  release locked     <- the only other check
 ```
 
-## Developing versus finishing
+The full flow, the two checkpoints and why there is no QA or reviewer agent are in
+`agents/AGENTS.md`.
 
-These two look similar and are not the same thing.
+## What you will be asked
 
-| | Develop phase | Definition of done |
-|---|---|---|
-| Dependencies | containers, per workspace, started by any agent that needs them | containers, from the deployment repository |
-| Backend, frontend, batch, listeners | host processes | Docker containers |
-| Nginx | host process | Docker container |
-| MCP server | host process, stdio | Docker container, Streamable HTTP |
-| Mobile app | emulator or simulator, driven with `adb` / `simctl` | signed build through Expo EAS |
-| Datastore access | Python tools, full privileges, local only | — |
-| Purpose | see the code work while writing it | finish the release |
-| Verified by | the agent looking at it | `preflight/done-check.sh`, then `preflight/journey-check.sh` |
+Agents ask one question at a time, as numbered options with a free-text slot last
+(`knowledge/questions/AGENTS.md`). At initialization there are three: monorepo or
+multi-repo, whether you want an MCP server, and whether agents may take the option they
+recommend without asking. After that, questions come only when a decision is genuinely
+yours — a login method, a provider setup, what to do when journey rework runs out.
 
-An agent may start, stop and poke at the develop phase as much as it likes. None of
-it finishes a release. Only a Docker deploy that `done-check.sh` passes, followed by
-required journeys that pass, does.
-
-**Journeys run somewhere else again.** The develop zone is what the human clicks
-through; a journey runs in a **test zone** — its own compose project, with only the
-dependencies the release uses, and the application running from the images the release
-just deployed. A journey needs a known starting state, and the develop zone is full of
-whatever the human has been clicking on. Once the journeys pass, the test zone is
-removed: containers, volumes, networks and run output. The images stay.
-
-Dependency containers belong to one workspace, are namespaced by `WORKSPACE_NAME`,
-and stay up across releases. Data survives `local-env.sh down`; only
-`local-env.sh destroy --yes`, which the human asks for, deletes it.
-
-## The two checkpoints
-
-1. The human approves the requirement analysis, once, before any code is written.
-2. A release is done: it deploys and runs on the local Docker host, verified by
-   `preflight/done-check.sh`, and its required journeys have run through the real UI
-   and passed in the test zone, which has then been removed, verified by
-   `preflight/journey-check.sh`. An `mcp-server` has no screen, so
-   `done-check.sh --mcp` checks instead that the service is deployed, `tools/list`
-   responds, and one real tool call reaches the backend.
-
-Nothing else is gated. There is no QA agent and no reviewer agent, and no agent
-judges whether its own work is good enough — that is what produces loops that never
-end. The journey gate avoids that because its verdict is executed assertions, and
-because rework is **bounded at 3 rounds**: after that the loop stops and the human
-decides. Defects the journeys do not cover come back as a new `type: change` release
-and re-enter the queue.
-
-Releases run strictly one at a time in ascending order. A release that has been
-built, deployed and has passed its journeys is marked `locked` in the `requirement`
-repository and can never be edited again.
-
-## Rules that never bend
-
-- One repository is owned by exactly one agent at a time.
-- A newer release overwrites an older one. Nothing is reconciled.
-- Versions pinned in `knowledge/tech-stack.yaml` are never changed by an agent, and
-  no **consumed** image uses the `latest` tag. An image the framework **builds** is
-  tagged `latest` in monorepo layout and with its repository's git tag in multi-repo
-  layout.
-- No secret is ever embedded in a mobile build.
-- The login method is **asked**, never assumed. Username and password is on the list
-  but is never the recommended option.
-- The identity token is **JWE**, encrypted. Data the frontend displays may be JWS.
-  Signing is RS256 with a key pair — one per authentication group, **and** one per
-  environment.
-- **Every** caller reaches the backend through **Nginx only**, while developing and
-  when deployed: the frontend, the MCP server, and anything added later.
-- A generated **MCP server** wraps the backend API and never touches a datastore, and
-  it is built only when the human asked for one.
-- Agents reach PostgreSQL, Kafka and Redis through the **Python tools** in the
-  workspace's `tool` repository and nothing else, against a **local** host only.
-- Every batch job and every listener gets its own repository, with its
-  responsibility written down.
-- Ownership may be a directory or a single file, but no two agents ever write the same
-  file.
-- Questions are asked one at a time, as numbered options with a free-text slot.
-- A release locks only when its required journeys have **run** and passed. Rework is
-  bounded at 3 rounds, and a fix never weakens a journey.
-- All framework content and all generated artifacts are written in English.
-
-Start with `AGENTS.md` for the full rules, then `agents/AGENTS.md` for the flow.
 `NOTES.md` holds ideas that were recorded and deliberately not built; no agent works
 from it.

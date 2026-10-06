@@ -1,16 +1,17 @@
 // Token exchange.
 //
-// This server holds NO signing key and NO RSA key pair. The backend owns the
-// authentication group's key pair, so the backend is what turns the caller's token
-// into a JWT RS256 for that same user.
+// This server holds NO key of any kind. The backend owns the authentication group's
+// keys, so the backend is what turns the caller's token into the system's identity
+// token for that same user: a nested JWT, signed and then encrypted. To this server it
+// is an opaque string. See knowledge/auth/AGENTS.md.
 //
 // Two shapes, one backend code path:
 //
 //   remote (streamable-http): the caller's OAuth 2.1 token is exchanged
 //   local  (stdio):           LOCAL_EXCHANGE_CREDENTIAL is exchanged
 //
-// The resulting JWT is what every tool sends through the gateway. The backend sees
-// the real end user and applies its own authorization rules unchanged.
+// The resulting identity token is what every tool sends through the gateway. The
+// backend sees the real end user and applies its own authorization rules unchanged.
 
 export interface ExchangeConfig {
   GATEWAY_URL: string;
@@ -21,12 +22,12 @@ export interface ExchangeConfig {
 export class TokenExchangeError extends Error {}
 
 /**
- * Exchanges the caller's credential for a JWT RS256 issued by the backend.
+ * Exchanges the caller's credential for the identity token issued by the backend.
  *
  * `callerToken` is the OAuth 2.1 token when the transport is streamable-http, and
  * undefined on stdio, where the local credential is used instead.
  */
-export async function exchangeForBackendJwt(
+export async function exchangeForIdentityToken(
   config: ExchangeConfig,
   callerToken?: string,
 ): Promise<string> {
@@ -48,7 +49,9 @@ export async function exchangeForBackendJwt(
         'content-type': 'application/json',
         authorization: `Bearer ${subject}`,
       },
-      body: JSON.stringify({ requested_token_type: 'jwt-rs256' }),
+      body: JSON.stringify({
+        requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      }),
     },
   );
 

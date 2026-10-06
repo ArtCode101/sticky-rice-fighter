@@ -9,15 +9,20 @@
 # pass.
 #
 # Usage:
-#   preflight/done-check.sh [--gateway <url>] [--mcp <url>] <compose-file> <url> [url...]
+#   preflight/done-check.sh [--gateway <url>]
+#                           [--mcp <url> --mcp-tool <name> [--mcp-args <json>] [--mcp-token <token>]]
+#                           <compose-file> <url> [url...]
 #
-# --gateway asserts that Nginx is deployed and answering. Any release whose frontend
-# calls a backend must pass it, because every caller reaches the backend through
+# --gateway asserts that Nginx is deployed and answering. Every release of a workspace
+# that has a backend must pass it, because every caller reaches the backend through
 # Nginx only.
 #
-# --mcp asserts that the MCP server is deployed, lists its tools, and calls one of
-# them for real. An MCP release has no screen to click through, so this takes the
-# place of that check.
+# --mcp asserts that the MCP server is deployed, that an MCP session initializes, that
+# it lists its tools, and that the tool named by --mcp-tool, called with --mcp-args
+# (default {}), reaches the backend. --mcp-token is the bearer token the deployed
+# server's OAuth 2.1 layer expects, when it expects one. An MCP release has no screen to
+# click through, so this takes the place of that check. The tool to call is the one the
+# mcp-server repository's README names for this check.
 #
 # Example:
 #   preflight/done-check.sh --gateway http://localhost:8000 \
@@ -25,7 +30,7 @@
 #       http://localhost:8000
 #
 #   preflight/done-check.sh --gateway http://localhost:8000 \
-#       --mcp http://localhost:8100 \
+#       --mcp http://localhost:8100/mcp --mcp-tool listAccounts \
 #       ../my-workspace/my-workspace-deployment/local/compose.yml \
 #       http://localhost:8000
 #
@@ -46,17 +51,19 @@ pass() { printf "${GREEN}[OK]${NC}   %s\n" "$1"; }
 fail() { printf "${RED}[FAIL]${NC} %s\n" "$1"; FAILED=1; }
 
 usage() {
-    printf "usage: %s [--gateway <url>] [--mcp <url>] <compose-file> <url> [url...]\n" "$0"
+    printf "usage: %s [--gateway <url>] [--mcp <url> --mcp-tool <name> [--mcp-args <json>] [--mcp-token <token>]] <compose-file> <url> [url...]\n" "$0"
 }
 
 # --gateway asserts that Nginx is deployed as a service and answers on that url.
-# Any release whose frontend calls a backend must pass it: the frontend reaches the
-# backend through Nginx only.
+# Every release of a workspace that has a backend must pass it.
 #
 # --mcp asserts the definition of done for a release that ships an MCP server: the
 # service is deployed, it lists its tools, and one real tool call reaches the backend.
 GATEWAY_URL=""
 MCP_URL=""
+MCP_TOOL=""
+MCP_ARGS="{}"
+MCP_TOKEN=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --gateway)
@@ -67,12 +74,17 @@ while [ "$#" -gt 0 ]; do
             fi
             shift 2
             ;;
-        --mcp)
-            MCP_URL="${2:-}"
-            if [ -z "$MCP_URL" ]; then
+        --mcp|--mcp-tool|--mcp-args|--mcp-token)
+            if [ -z "${2:-}" ]; then
                 usage
                 exit 2
             fi
+            case "$1" in
+                --mcp)       MCP_URL="$2" ;;
+                --mcp-tool)  MCP_TOOL="$2" ;;
+                --mcp-args)  MCP_ARGS="$2" ;;
+                --mcp-token) MCP_TOKEN="$2" ;;
+            esac
             shift 2
             ;;
         *)
@@ -82,6 +94,12 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ "$#" -lt 2 ]; then
+    usage
+    exit 2
+fi
+
+if [ -n "$MCP_URL" ] && [ -z "$MCP_TOOL" ]; then
+    printf '%s\n' "--mcp needs --mcp-tool: the tool the mcp-server README names for this check"
     usage
     exit 2
 fi
@@ -120,13 +138,13 @@ else
 fi
 
 # 3. When a gateway is required, Nginx must be one of the deployed services and it
-#    must answer. Every caller reaches the backend through Nginx only, so a release
-#    with a frontend is not done without it.
+#    must answer. Every caller reaches the backend through Nginx only, so a release of
+#    a workspace with a backend is not done without it.
 if [ -n "$GATEWAY_URL" ]; then
     if printf '%s\n' "$SERVICES" | grep -qi 'nginx'; then
         pass "Nginx is a deployed service"
     else
-        fail "No Nginx service in $COMPOSE_FILE: the frontend must reach the backend through Nginx"
+        fail "No Nginx service in $COMPOSE_FILE: every caller must reach the backend through Nginx"
     fi
 
     GATEWAY_STATUS="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$GATEWAY_URL" 2>/dev/null)"
@@ -139,9 +157,10 @@ if [ -n "$GATEWAY_URL" ]; then
     fi
 fi
 
-# 4. When an MCP server is required, it must be deployed, it must list its tools,
-#    and one of those tools must actually reach the backend. An MCP release has no
-#    screen to click through, so these three checks are its definition of done.
+# 4. When an MCP server is required, it must be deployed, an MCP session must
+#    initialize over Streamable HTTP, it must list its tools, and the named tool must
+#    actually reach the backend. An MCP release has no screen to click through, so
+#    these checks are its definition of done.
 if [ -n "$MCP_URL" ]; then
     if printf '%s\n' "$SERVICES" | grep -qi 'mcp-server'; then
         pass "MCP server is a deployed service"
@@ -149,38 +168,59 @@ if [ -n "$MCP_URL" ]; then
         fail "No mcp-server service in $COMPOSE_FILE"
     fi
 
-    # 4a. tools/list must respond with at least one tool.
-    TOOLS_RESPONSE="$(curl -s --max-time 15 \
-        -H 'content-type: application/json' \
-        -H 'accept: application/json, text/event-stream' \
-        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
-        "$MCP_URL" 2>/dev/null)"
+    MCP_HEADERS="$(mktemp)"
+    trap 'rm -f "$MCP_HEADERS"' EXIT
+    MCP_SESSION=""
+    MCP_VERSION=""
 
-    FIRST_TOOL="$(printf '%s' "$TOOLS_RESPONSE" \
-        | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
-        | head -n 1 \
-        | sed -E 's/.*"([^"]*)"$/\1/')"
-
-    if [ -z "$FIRST_TOOL" ]; then
-        fail "tools/list returned no tools from $MCP_URL"
-    else
-        pass "tools/list responded ($FIRST_TOOL and any others)"
-
-        # 4b. Call that tool for real. Any JSON-RPC result means the request went
-        #     through the server, the gateway and the backend. A transport-level
-        #     failure or a JSON-RPC error means it did not.
-        CALL_RESPONSE="$(curl -s --max-time 20 \
+    # One JSON-RPC message to the server. Adds the session, protocol version and bearer
+    # token once they are known. The response may be plain JSON or an SSE stream.
+    mcp_post() {
+        set -- -s --max-time 20 -D "$MCP_HEADERS" \
             -H 'content-type: application/json' \
             -H 'accept: application/json, text/event-stream' \
-            -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"$FIRST_TOOL\",\"arguments\":{}}}" \
-            "$MCP_URL" 2>/dev/null)"
+            -d "$1"
+        [ -n "$MCP_SESSION" ] && set -- "$@" -H "mcp-session-id: $MCP_SESSION"
+        [ -n "$MCP_VERSION" ] && set -- "$@" -H "mcp-protocol-version: $MCP_VERSION"
+        [ -n "$MCP_TOKEN" ] && set -- "$@" -H "authorization: Bearer $MCP_TOKEN"
+        curl "$@" "$MCP_URL" 2>/dev/null
+    }
 
-        if [ -z "$CALL_RESPONSE" ]; then
-            fail "No response calling tool $FIRST_TOOL at $MCP_URL"
-        elif printf '%s' "$CALL_RESPONSE" | grep -q '"error"'; then
-            fail "Tool $FIRST_TOOL returned a JSON-RPC error: the call did not reach the backend"
+    # 4a. initialize, then notifications/initialized.
+    INIT_RESPONSE="$(mcp_post '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"done-check","version":"1.0.0"}}}')"
+    MCP_SESSION="$(grep -i '^mcp-session-id:' "$MCP_HEADERS" | head -n 1 | sed -E 's/^[^:]+:[[:space:]]*//' | tr -d '\r')"
+    MCP_VERSION="$(printf '%s' "$INIT_RESPONSE" | grep -o '"protocolVersion"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n 1 | sed -E 's/.*"([^"]*)"$/\1/')"
+    MCP_STATUS="$(head -n 1 "$MCP_HEADERS" | awk '{print $2}')"
+
+    if [ "$MCP_STATUS" = "401" ] || [ "$MCP_STATUS" = "403" ]; then
+        fail "MCP server answered HTTP $MCP_STATUS to initialize: pass --mcp-token"
+    elif [ -z "$MCP_VERSION" ]; then
+        fail "MCP server at $MCP_URL did not complete initialize"
+    else
+        pass "MCP session initialized (protocol $MCP_VERSION${MCP_SESSION:+, session $MCP_SESSION})"
+        mcp_post '{"jsonrpc":"2.0","method":"notifications/initialized"}' >/dev/null
+
+        # 4b. tools/list must include the named tool.
+        TOOLS_RESPONSE="$(mcp_post '{"jsonrpc":"2.0","id":1,"method":"tools/list"}')"
+        if printf '%s' "$TOOLS_RESPONSE" | grep -q "\"name\"[[:space:]]*:[[:space:]]*\"$MCP_TOOL\""; then
+            pass "tools/list responded and includes $MCP_TOOL"
+
+            # 4c. Call it for real. A JSON-RPC error, or a result flagged isError, means
+            #     the call did not get through the server, the gateway and the backend.
+            CALL_RESPONSE="$(mcp_post "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"$MCP_TOOL\",\"arguments\":$MCP_ARGS}}")"
+            if [ -z "$CALL_RESPONSE" ]; then
+                fail "No response calling tool $MCP_TOOL"
+            elif printf '%s' "$CALL_RESPONSE" | grep -q '"error"[[:space:]]*:'; then
+                fail "Tool $MCP_TOOL returned a JSON-RPC error"
+            elif printf '%s' "$CALL_RESPONSE" | grep -q '"isError"[[:space:]]*:[[:space:]]*true'; then
+                fail "Tool $MCP_TOOL ran but returned isError: the backend call failed"
+            elif printf '%s' "$CALL_RESPONSE" | grep -q '"result"'; then
+                pass "Tool $MCP_TOOL reached the backend"
+            else
+                fail "Tool $MCP_TOOL returned no result"
+            fi
         else
-            pass "Tool $FIRST_TOOL reached the backend"
+            fail "tools/list from $MCP_URL does not include $MCP_TOOL"
         fi
     fi
 fi
