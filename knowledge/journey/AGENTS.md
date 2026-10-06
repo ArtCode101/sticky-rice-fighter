@@ -135,7 +135,8 @@ One `journey` repository per workspace.
 ├── mobile/
 │   └── <slug>.yaml          # from templates/journey.flow.yaml
 ├── runs/
-│   └── release-<n>.md       # from templates/run-report.md; one per release
+│   ├── release-<n>.md       # from templates/run-report.md; one per release
+│   └── release-<n>/         # the runner reports the gate reads; kept
 ├── .storage-state/          # git-ignored; see Provider login below
 └── README.md
 ```
@@ -214,14 +215,14 @@ When a run has a failed required journey:
 
    | Root cause | Fixed by |
    |---|---|
-   | product code or its configuration | the Coding Agent that owns that repository, given the run report |
+   | product code or its configuration | the Coding Agent that owns that repository, given the run report by the Release Agent |
    | the journey script or its mock data | the Journey Test Agent, in the `journey` repository |
    | the test zone itself | the Journey Test Agent, in `local-env/test/` |
 
 3. **Fix**, within the rules in **A fix never weakens a journey**.
-4. **Rebuild and redeploy** when product code changed: the owning Coding Agent builds,
-   deploys and passes `preflight/done-check.sh` again, then the test zone is pointed at
-   the new image tags.
+4. **Rebuild and redeploy** when product code changed: the owning Coding Agent
+   rebuilds, the Release Agent redeploys and passes `preflight/done-check.sh` again, then
+   the test zone is pointed at the new image tags.
 5. **Run the required journeys again.** All of them, not only the one that failed: a
    fix in one place can break another.
 
@@ -236,7 +237,8 @@ When every required journey has passed, clean up **without asking**:
 2. Remove its volumes, which is where the test data lives.
 3. Remove its networks and any orphan containers.
 4. Delete temporary run output: Playwright's `test-results/` and HTML report, Maestro
-   output, anything written under `local-env/test/` while running.
+   output, anything written under `local-env/test/` while running. The runner reports
+   under `runs/release-<n>/` are **not** temporary; they stay.
 
 ```bash
 docker compose -p "$WORKSPACE_NAME-test" -f compose.yml down --volumes --remove-orphans
@@ -245,7 +247,8 @@ docker compose -p "$WORKSPACE_NAME-test" -f compose.yml down --volumes --remove-
 The images are **not** removed: they belong to the deploy. The run report in
 `runs/release-<n>.md` is **kept**: it is the record of what passed.
 
-Then run `preflight/journey-check.sh`. The release locks only after it passes.
+Then run `preflight/journey-check.sh`. The Release Agent locks the release only after
+it passes.
 
 ### When the rounds run out
 
@@ -263,8 +266,44 @@ Release <n>: <k> required journeys still fail after 3 rework rounds. What now?
 
 This question has **no recommended option**, so it is asked even when
 `workspace.auto_recommend` is `true`, and it stops the run even when
-`release_execution` is `auto`. On "lock anyway" the test zone is cleaned up as above,
-and the run report records `result: accepted` instead of `passed`.
+`release_execution` is `auto`.
+
+Every answer is recorded in the run report, in two places: the answer's key appended to
+`human_decisions` in the front matter, and the human's own words, quoted, under
+**Human decisions** in the body.
+
+| Answer | Key | Effect |
+|---|---|---|
+| Lock anyway | `lock-anyway` | the test zone is cleaned up as above; `result: accepted` instead of `passed` |
+| Three more rounds | `more-rounds` | `max_rounds` goes up by 3 and rework continues |
+| Leave it open | `leave-open` | nothing runs until the human says so |
+
+`journey-check.sh` accepts `result: accepted` only when the last recorded decision is
+`lock-anyway`, and allows `rounds` above 3 only as far as the recorded `more-rounds`
+answers raise `max_rounds`.
+
+## Runner reports: what the gate reads
+
+The run report's front matter is written by the Journey Test Agent, so on its own it
+would be the agent's word. `preflight/journey-check.sh` therefore also reads what the
+test runner itself wrote, and the two must agree.
+
+For every run `k` (the first run is `0`), the runner's report is kept beside the run
+report:
+
+| Platform | Command shape | Kept at |
+|---|---|---|
+| web | `JOURNEY_REPORT_FILE=../runs/release-<n>/run-<k>.web.json npx playwright test` | `runs/release-<n>/run-<k>.web.json` |
+| mobile | `maestro test --format junit --output runs/release-<n>/run-<k>.mobile.xml mobile/` | `runs/release-<n>/run-<k>.mobile.xml` |
+
+- `last_run` in the front matter names the run the result was taken from.
+- In the Playwright report a journey is its `<slug>.spec.ts` file; it passed when every
+  test in that file has status `expected`. A `skipped` or `flaky` test is not a pass.
+- In the Maestro report a journey is the test case named `<slug>` — the flow's `name`
+  field; it passed when it has no `failure` or `error`.
+- A required journey that appears in neither report of `last_run` did not run.
+
+These files are committed with the journey repository and never deleted at cleanup.
 
 ## Desktop or background mode
 
@@ -309,6 +348,8 @@ between environments. Full rules: `knowledge/auth/AGENTS.md`.
 - Make a journey pass by removing, skipping or loosening a step, an assertion or a
   required journey.
 - Count a generated script as a passed journey. A journey passes only by running.
+- Record a journey's result anywhere but from its runner report, or delete or edit a
+  runner report.
 - Write a journey script before the journey document exists.
 - Run journeys against the develop zone, or inject journey mock data into it.
 - Build application images for the test zone instead of using the deploy's.

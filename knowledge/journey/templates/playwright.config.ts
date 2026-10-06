@@ -40,5 +40,11 @@ export default defineConfig({
   // into rework (at most 3 rounds), and its retry is the rework round, not a
   // Playwright retry: a journey that passes on the second try still failed once.
   retries: 0,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // The JSON report is what preflight/journey-check.sh reads. JOURNEY_REPORT_FILE is
+  // runs/release-<n>/run-<k>.web.json; it is kept, unlike test-results/ and the HTML.
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ['json', { outputFile: process.env.JOURNEY_REPORT_FILE ?? 'journey-report.json' }],
+  ],
 });

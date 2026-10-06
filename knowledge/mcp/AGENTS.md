@@ -47,8 +47,21 @@ The MCP server is built only when the human asked for one.
 - `false`, or absent, means **do not build it**. No agent creates an `mcp-server`
   repository on its own initiative.
 - `false` is not a permanent refusal. If the human later asks for an MCP server
-  directly, build it and set the field to `true`. The field stops agents from asking
-  again; it does not override a direct instruction.
+  directly, the Release Agent sets the field to `true` (`agents/release-agent.md`) and
+  the MCP work goes through the Requirement Analysis Agent as its own release. The field
+  stops agents from asking again; it does not override a direct instruction.
+
+## Its own release, always
+
+The server is generated from the OpenAPI documents the backends publish, so those
+documents must exist before it is built. The `mcp-server` is therefore **never** in the
+same release as a backend whose API it wraps:
+
+- It is built in its own release, after the release that builds those backends.
+- When a later release changes a backend's API, the next release regenerates it.
+
+This ordering is the Requirement Analysis Agent's job. A Coding Agent assigned the
+`mcp-server` that finds a document missing stops and reports, as below.
 
 ## Where it lives
 
@@ -81,13 +94,13 @@ needs one connection to reach the whole system.
 | `templates/token-exchange.ts` | `src/token-exchange.ts` |
 | `templates/tool.ts` | `src/tools/<operationId>.ts`, once per operation |
 | `templates/Dockerfile` | `Dockerfile` |
-| `templates/docker-compose.yml` | the `deployment` repository's `local/compose.yml` |
+| `templates/docker-compose.yml` | the `deployment` repository's `local/compose.yml`, under the `deployment-local` lock |
 
 Every version comes from the `mcp` section of `knowledge/tech-stack.yaml`, unchanged.
 
 ## The only input: the OpenAPI documents in the registry
 
-The MCP server is generated from the OpenAPI documents every backend commits to the
+The MCP server is generated from the OpenAPI documents every backend writes to the
 `registry` repository:
 
 ```text
@@ -130,16 +143,17 @@ Two layers, two standards. They do not mix.
 |---|---|
 | AI Agent → MCP Server, remote | OAuth 2.1, as the MCP specification requires |
 | AI Agent → MCP Server, local | stdio. No OAuth: there is no HTTP layer to carry the flow |
-| MCP Server → Backend API | JWT RS256, exactly like every other caller |
+| MCP Server → Backend API | the system's identity token, exactly like every other caller |
 
-The MCP server **holds no signing key**. It calls the backend's token exchange
-endpoint, which owns the authentication group's key pair, and receives a JWT RS256
-for the end user:
+The MCP server **holds no key**. It calls the backend's token exchange endpoint, which
+owns the authentication group's keys, and receives the identity token for the end user.
+To the MCP server that token is opaque; its format is defined in
+`knowledge/auth/AGENTS.md`.
 
 ```text
 remote:  AI Agent --OAuth 2.1 token--> MCP Server --exchange--> backend auth
                                                                    |
-                                              JWT RS256 for that same user
+                                            identity token for that same user
                                                                    v
                                                       Nginx --> Backend API
 
@@ -152,12 +166,11 @@ rules apply unchanged.
 
 AI agents must not:
 
-- Give the MCP server a private key or an RSA key pair of its own.
+- Give the MCP server a key of any kind.
 - Introduce a new authentication group for the MCP server.
 - Let the MCP server mint, forge or extend a token.
-- Skip the exchange and forward an OAuth token to the backend. The backend accepts the
-  system's own identity token, which is **JWE** signed with RS256 — never a provider's
-  OAuth token. See `knowledge/auth/AGENTS.md`.
+- Skip the exchange and forward an OAuth token to the backend. The backend accepts only
+  the system's own identity token, never a provider's OAuth token.
 
 The local credential the MCP server uses for the exchange lives in the `config`
 repository under `local/`. It is never hard-coded and never committed as a real
@@ -165,13 +178,18 @@ value.
 
 ## Definition of done
 
-An MCP release is done when `preflight/done-check.sh --mcp <url>` passes:
+An MCP release is done when `preflight/done-check.sh --mcp <url> --mcp-tool <name>`
+passes:
 
 1. `mcp-server` is one of the deployed compose services
-2. `tools/list` responds
-3. one real tool call reaches the backend
+2. an MCP session initializes over Streamable HTTP
+3. `tools/list` responds and includes the named tool
+4. a real call of that tool reaches the backend and is not an error
 
-There is no screen to click through, so these three take the place of that check.
+There is no screen to click through, so these take the place of that check. The tool is
+one whose operation needs no input, or whose input is given with `--mcp-args`; the
+`mcp-server` README names it. Picking the check tool is not choosing which tools exist.
+When the deployed server requires OAuth 2.1, the check also takes `--mcp-token`.
 Running the server on the host during development does not finish the release, for
 the same reason a host-run backend does not.
 

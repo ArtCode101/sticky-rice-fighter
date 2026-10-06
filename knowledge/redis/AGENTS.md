@@ -38,7 +38,7 @@ AI agents must not:
 ## Current Redis Image
 
 ```text
-redis:8.2
+redis:8.2.10
 ```
 
 ## Workspace scoping

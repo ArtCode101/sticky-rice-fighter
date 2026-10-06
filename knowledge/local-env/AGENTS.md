@@ -12,9 +12,10 @@ The local environment is the set of dependency containers a workspace needs whil
 its code is being written: PostgreSQL, Redis and Kafka. Agents start it themselves
 so they can develop against something real.
 
-This capability is **not owned by a specific agent**. Any agent that needs a
-dependency while working may provision and start it. There is no approval step and
-no gate.
+Any agent that needs a dependency while working may provision and start it. There is
+no approval step and no gate. Because several Coding Agents may need it at once, every
+write under `${WORKSPACE_PATH}/local-env/` — except `test/`, which is the Journey Test
+Agent's — is made under the `local-env` lock in `agents/AGENTS.md`.
 
 ## Provisioning
 
@@ -52,7 +53,7 @@ data would be the wrong trade.
 | | Develop zone | Test zone |
 |---|---|---|
 | Lives in | `${WORKSPACE_PATH}/local-env/` | `${WORKSPACE_PATH}/local-env/test/` |
-| Owned by | the Coding Agent | the Journey Test Agent |
+| Written by | any Coding Agent, under the `local-env` lock | the Journey Test Agent |
 | Compose project | `$WORKSPACE_NAME` | `$WORKSPACE_NAME-test` |
 | The application | started natively | run as containers from the images the release deployed |
 | Torn down | only when the human asks | automatically, once the release's required journeys pass |

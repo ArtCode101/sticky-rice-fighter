@@ -77,143 +77,29 @@ Raw requirement input from the human may arrive in any language. The Requirement
 Analysis Agent must produce its output in English regardless of the input
 language.
 
-## Datastore access
+## Where each rule lives
 
-Agents reach PostgreSQL, Kafka and Redis through the Python tools in the workspace's
-`tool` repository, and through nothing else. No `psql`, no `redis-cli`, no
-`docker exec` into a datastore container, no ad-hoc connection code in a service
-repository.
+Every rule has **one** home. This table gives each a line so an agent knows it exists;
+the file on the right is the rule, and it wins over any summary, including this one.
+When a rule changes, it changes there.
 
-On the **local** workspace datastores the grant is total: insert, update, delete,
-DDL and mock data generation for testing are all allowed, with no approval step. The
-scope is **local level only** — never a dev, sys, staging or production datastore —
-and each tool enforces that itself by refusing a non-local host.
+| Topic | In one line | The rule |
+|---|---|---|
+| Agents, flow, gates | Two checkpoints: the human approves the analysis; a release is done when `done-check.sh` and `journey-check.sh` pass. No QA or reviewer agent. | `agents/AGENTS.md` |
+| File ownership | No two agents write the same file at the same time; shared workspace files are written under a lock. | `agents/AGENTS.md` |
+| Running releases | The Release Agent creates phase 2 repositories, starts, deploys and locks each release. | `agents/release-agent.md` |
+| Asking the human | One question at a time, numbered options, a free-text slot last; `auto_recommend` never skips a question with no recommendation. | `knowledge/questions/AGENTS.md` |
+| Datastore access | PostgreSQL, Kafka and Redis only through the Python tools in the `tool` repository, local hosts only, full privileges there. | `knowledge/tools/AGENTS.md` |
+| Backend traffic | Every caller reaches the backend through Nginx only, in development and deployed; every workspace with a backend has Nginx. | `knowledge/nginx/AGENTS.md` |
+| MCP servers | Built only when the human asked; generated mechanically from the backends' OpenAPI documents, in its own release; never touches a datastore. | `knowledge/mcp/AGENTS.md` |
+| Authentication | The login method is asked, never assumed; the identity token is a nested JWT, signed then encrypted; keys per group and per environment. | `knowledge/auth/AGENTS.md` |
+| Mobile apps | React Native on Expo, split by user group, no secret in a build. | `knowledge/mobile/AGENTS.md` |
+| Journeys | A release locks only when its required journeys have run and passed in the test zone; rework is bounded at 3 rounds. | `knowledge/journey/AGENTS.md` |
+| Versions and image tags | Every version in `knowledge/tech-stack.yaml` is exact; consumed images are never `latest`; produced images are tagged by layout. | `knowledge/versioning/AGENTS.md` |
+| Repository layout | `mono` or `multi`, asked once at initialization, default `mono`. | `knowledge/workspace/AGENTS.md` |
 
-The human has been told what this permits, including that a mistaken script can
-destroy local data, and accepts that risk. Do not add guardrails, backups or
-confirmation prompts in front of a local write: that would reintroduce a gate.
-
-Full rules: `knowledge/tools/AGENTS.md`.
-
-## Backend traffic
-
-**Every** caller reaches the backend through **Nginx only**, in development and when
-deployed. That covers the frontend, the MCP server and anything added later. Nothing
-calls a backend port directly, and Nginx is never bypassed "just for local
-development".
-
-Full rules: `knowledge/nginx/AGENTS.md`.
-
-## MCP servers
-
-The framework can generate an **MCP server** over the system it built, so an outside
-AI agent can drive that system:
-
-```text
-AI Agent  ->  MCP Client  ->  MCP Server  ->  Nginx  ->  Backend API  ->  Database
-```
-
-- It is built **only when the human asked for one**. `workspace.mcp_server` in the
-  workspace manifest records the answer, given once at initialization. Silence means
-  no.
-- It wraps the backend API and **never** touches PostgreSQL, Kafka or Redis.
-- Its tools are generated mechanically from the OpenAPI documents each backend
-  publishes to `registry/openapi/`. No agent chooses which endpoints to expose.
-- The framework generates the server only. The client is the outside agent; its stack
-  is pinned for reference.
-
-Full rules: `knowledge/mcp/AGENTS.md`.
-
-## Asking the human
-
-Every question any agent asks takes one shape: **numbered options**, one line each
-saying what the option means, a **free-text slot** last, and **one question at a time**.
-A wall of ten or twenty questions is the failure this replaces.
-
-`workspace.auto_recommend` decides whether an agent may take the option it recommends
-without asking. Even when it is `true`, a question with **no** recommended option is
-still asked: auto mode has nothing to apply there, and an agent must not invent a
-recommendation in order to avoid asking.
-
-Questions are inputs, not gates. The framework still has exactly the two checkpoints in
-`agents/AGENTS.md`.
-
-Full rules: `knowledge/questions/AGENTS.md`.
-
-## Authentication
-
-The login method is **asked**, never assumed — a requirement that says "the system has
-login" has not said how. Username and password is on the list of options but is never
-the recommended one.
-
-A method that needs provider setup is offered two ways: the agent does it through the
-provider's CLI, or the human does it in the portal with a numbered list of what to click.
-The second is the default.
-
-Tokens: the **identity token is JWE**, encrypted and unreadable. Data the frontend has
-to display may be **JWS**. Signing is RS256 with a key pair — private key signs, public
-key verifies — and **every environment has its own pair**, as does every authentication
-group. No key ever reaches a browser or a mobile build.
-
-Full rules: `knowledge/auth/AGENTS.md`.
-
-## Applications the framework builds
-
-Backend, frontend, **mobile** (React Native on Expo), batch jobs, listeners, and
-optionally an MCP server. A mobile app is split by user group the same way a frontend
-is, reaches the backend through Nginx like everything else, and **never carries a secret
-in its build** — a user can unpack the installed file.
-
-Full rules: `knowledge/mobile/AGENTS.md`.
-
-## Journeys and journey tests
-
-A **journey** is the ordered path a real user walks, including the steps inserted to make
-a later one possible. The journey **document** is written first, from the code and the
-specifications; the Playwright or Maestro script comes after it.
-
-Journeys run in a **test zone** with its own containers — a separate compose project,
-running the images the release deployed — apart from the develop zone the human clicks
-through, with mock data injected per journey.
-
-**A release locks only when its required journeys pass.** After the deploy, the Journey
-Test Agent writes or updates the journeys for the release's scope, provisions the test
-zone, and **executes** them through the real UI — desktop browser mode by default. A
-generated script that has not run proves nothing.
-
-- A failing required journey sends the release into **rework**: evidence, root cause,
-  fix, rebuild and redeploy, run again. Rework is **bounded at 3 rounds**; then the
-  loop stops and the human decides.
-- A fix never weakens a journey: no step, assertion or required journey is removed,
-  skipped or loosened to make it pass.
-- Once every required journey passes, the test zone's containers, volumes and networks
-  are removed. `preflight/journey-check.sh` verifies the pass and the cleanup.
-
-The gate is the journeys' executed assertions, not an agent's judgment. The Journey Test
-Agent is still not a QA agent or a reviewer.
-
-Full rules: `knowledge/journey/AGENTS.md`.
-
-## Versioning and image tags
-
-The rule that no image uses the `latest` tag applies to images the framework
-**consumes** — base and dependency images stay pinned exactly. An image the framework
-**produces** from workspace code is tagged `latest` in `mono` layout, and with its
-repository's git tag in `multi` layout, where the repository is tagged with a semantic
-version before it is built.
-
-Full rules: `knowledge/versioning/AGENTS.md`.
-
-## Repository layout
-
-Each workspace is either **mono** (one git repository at the workspace root, every
-repository a directory inside it) or **multi** (one git repository per repository).
-
-`workspace.repo_layout` in the workspace manifest records the answer, asked of the
-human at initialization. Agents read it and must never write it. When the human does
-not choose, the answer is `mono`.
-
-Full rules: `knowledge/workspace/AGENTS.md`.
+The knowledge files are not loaded on their own: the workspace lives outside this
+repository. Each agent reads the files its definition's **Inputs** table lists.
 
 ## Ideas that are not built
 

@@ -4,7 +4,8 @@
 # a host process. Upstreams are compose service names, not 127.0.0.1.
 #
 # Every caller reaches the backends through this service only: the frontend, the
-# mcp-server, and anything added later.
+# mobile app, the mcp-server, and anything added later. It is present in every
+# workspace that has a backend.
 #
 # Required:
 #   WORKSPACE_NAME - names the container, matching the workspace's other services.
