@@ -18,7 +18,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
-import { exchangeForBackendJwt, type ExchangeConfig } from '../token-exchange.js';
+import { exchangeForIdentityToken, type ExchangeConfig } from '../token-exchange.js';
 
 // --- from the OpenAPI operation -------------------------------------------------
 
@@ -55,9 +55,10 @@ export function register(server: McpServer, config: ExchangeConfig): void {
       outputSchema: Output,
     },
     async (input, { authInfo }) => {
-      // The backend accepts JWT RS256 only, so the caller's token is exchanged
-      // first. On stdio there is no caller token and the local credential is used.
-      const jwt = await exchangeForBackendJwt(config, authInfo?.token);
+      // The backend accepts the system's own identity token only, so the caller's
+      // token is exchanged first. On stdio there is no caller token and the local
+      // credential is used.
+      const identityToken = await exchangeForIdentityToken(config, authInfo?.token);
 
       // Path parameters are substituted; whatever is left is the query or the body,
       // depending on the method.
@@ -84,7 +85,7 @@ export function register(server: McpServer, config: ExchangeConfig): void {
       const response = await fetch(url, {
         method: METHOD,
         headers: {
-          authorization: `Bearer ${jwt}`,
+          authorization: `Bearer ${identityToken}`,
           ...(hasBody ? { 'content-type': 'application/json' } : {}),
         },
         ...(hasBody ? { body: JSON.stringify(rest) } : {}),

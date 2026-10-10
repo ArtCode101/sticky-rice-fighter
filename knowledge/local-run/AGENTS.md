@@ -90,8 +90,8 @@ npm run dev          # speaks stdio; the calling agent launches this command
 ```
 
 On stdio there is no HTTP layer, so there is no OAuth flow. The server exchanges
-`LOCAL_EXCHANGE_CREDENTIAL` from the `config` repository's `local/` for a JWT RS256
-at the backend instead. The backend's code path is the same one a deployed caller
+`LOCAL_EXCHANGE_CREDENTIAL` from the `config` repository's `local/` for the identity
+token at the backend instead. The backend's code path is the same one a deployed caller
 takes.
 
 Nginx, from the workspace:

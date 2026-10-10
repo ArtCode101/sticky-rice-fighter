@@ -108,35 +108,61 @@ goes** and the human puts it there.
 AI agents must not commit a provider secret, print it into a log, or embed it in a
 frontend or mobile build.
 
-## Tokens: JWE for identity, JWS for display
+## Tokens: nested JWT for identity, JWS for display
+
+This section is the single source for token formats and keys. Every other file
+summarizes it in a line and links here.
 
 Two kinds of token, two purposes, and they are not interchangeable.
 
 | Token | Format | Why |
 |---|---|---|
-| **Identity token** — proves who the caller is | **JWE.** Genuinely encrypted; unreadable without the key. | A signed-only token's payload is readable by anyone holding it. That is not acceptable for identity. |
-| **Display data** — values the frontend renders | **JWS.** Signed, readable. | The frontend has to read it, so encrypting it would mean shipping a key to the browser. |
+| **Identity token** — proves who the caller is | **Nested JWT: signed, then encrypted.** A JWS signed with RS256, wrapped in a JWE. | Signing proves which service issued it; encryption makes the payload unreadable to anyone holding the token. Either one alone is not enough. |
+| **Display data** — values the frontend renders | **JWS**, RS256. Signed, readable. | The frontend has to read it, so encrypting it would mean shipping a key to the browser. |
 
-A plain signed token is **not** acceptable as an identity token, whatever the signing
-algorithm. "JWT" names the family, not the protection: the common case is JWS, which is
-readable. When this framework says the identity token is JWE, it means the payload
-cannot be read without the key.
+"JWT" names the family, not the protection. RS256 is a **signing** algorithm: it never
+makes a payload unreadable. A plain signed token is therefore **not** acceptable as an
+identity token, however it is signed.
+
+### The identity token, exactly
+
+1. **Sign.** Build the claims and sign them as a JWS with `alg: RS256`, using the
+   authentication group's **signing private key**.
+2. **Encrypt.** Put that JWS inside a JWE with `alg: RSA-OAEP-256`, `enc: A256GCM` and
+   `cty: JWT`, encrypted to the group's **encryption public key**.
+3. **Accept** in reverse: decrypt the JWE with the **encryption private key**, then verify
+   the inner JWS with the **signing public key**. A token that fails either step is
+   rejected.
+
+`nimbus-jose-jwt`, pinned in `knowledge/tech-stack.yaml`, does both layers. Spring
+Security's resource server verifies a JWS out of the box but does not decrypt a JWE, so
+a backend that accepts the identity token configures its own `JwtDecoder` that decrypts
+first and then verifies.
 
 ### Keys
 
-- **RS256**, with a key pair, generated with OpenSSL.
-- **A separate key pair per environment.** No pair is shared across environments.
-- The **private key signs**. The **public key verifies**.
-- The frontend holds **no key**. Verification is the backend's job. The public key
-  exists so other services in the same environment can verify that a token was issued
-  here.
-- A service that must **decrypt** a JWE identity token needs the decryption key, not
-  merely the public key. Which services need it is decided per system.
+Every authentication group has **two** RSA key pairs **per environment**:
+
+| Pair | Private key | Public key |
+|---|---|---|
+| **Signing** | signs the inner JWS and display JWS — held only by the backend that issues tokens | verifies a signature — any backend in the same environment may hold it |
+| **Encryption** | decrypts the outer JWE — held only by the backends that accept the identity token | encrypts — held by the backend that issues tokens |
+
+- Generated with OpenSSL, 2048 bits at least. The layout and commands are in
+  `knowledge/config/AGENTS.md`.
+- **No pair is shared** across environments, across authentication groups, or between
+  the signing and encryption roles.
+- A user group that does not authenticate has no keys at all.
+- The frontend and the mobile app hold **no key**. To them the identity token is an
+  opaque string they pass back.
+- The MCP server holds no key either; it obtains identity tokens through the token
+  exchange (`knowledge/mcp/AGENTS.md`).
 
 AI agents must not:
 
-- Issue an identity token as JWS.
-- Share one key pair across two environments.
+- Issue an identity token that is only signed, or only encrypted.
+- Use one key pair for both signing and encryption.
+- Share one key pair across two environments or two authentication groups.
 - Ship any key to a browser or embed one in a mobile build.
 - Put sensitive data in a JWS payload on the assumption that signing hides it.
 

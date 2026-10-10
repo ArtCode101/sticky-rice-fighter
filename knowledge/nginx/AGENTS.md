@@ -8,21 +8,23 @@ This file applies to all files under:
 
 ## Purpose
 
-Nginx is the gateway between the frontend and the backends. It exists in every
-workspace that has both.
+Nginx is the gateway in front of the backends. It exists in **every workspace that has
+a backend**, whatever calls it.
 
 ## The rule that never bends
 
 **Every caller reaches the backend through Nginx only.**
 
-The frontend is one such caller, and so is the MCP server. Nothing calls a backend
-service directly, not in development and not in a deployed system. Every call goes to
-Nginx, which routes it to the right backend.
+The frontend is one such caller, and so are the mobile app and the MCP server. Nothing
+calls a backend service directly, not in development and not in a deployed system.
+Every call goes to Nginx, which routes it to the right backend.
 
 | Caller | Reaches the backend through |
 |---|---|
 | Frontend | Nginx |
+| Mobile app | Nginx |
 | MCP server | Nginx |
+| Journey tests | the test zone's Nginx |
 | Anything added later | Nginx |
 
 There is no exception, and adding one is not a way to work around a problem. The
@@ -31,12 +33,15 @@ through Nginx too.
 
 AI agents must not:
 
-- Point a frontend or an MCP server at a backend port directly.
+- Point a frontend, a mobile app or an MCP server at a backend port directly.
 - Bypass Nginx "just for local development".
 - Remove or reroute an existing backend upstream to work around a problem.
 
 When a backend repository is added to the workspace, its upstream and its route are
-added to the Nginx configuration in the same change.
+added to the Nginx configuration in the same change, by the Coding Agent that owns that
+backend. Every backend's agent edits the same configuration files, so each edit is made
+under the shared-file lock in `agents/AGENTS.md`: `local-env` for the development
+configuration, `deployment-local` for the deployed one.
 
 ## Two runtime shapes
 
@@ -60,8 +65,8 @@ gateway; it is never an upstream behind it.
 
 | Template | Copy to | Used in |
 |---|---|---|
-| `templates/nginx.dev.conf` | `${WORKSPACE_PATH}/local-env/nginx/nginx.conf` | development |
-| `templates/docker-compose.yml` | the `deployment` repository's `local/compose.yml` | definition of done |
+| `templates/nginx.dev.conf` | `${WORKSPACE_PATH}/local-env/nginx/nginx.conf` | development, lock `local-env` |
+| `templates/docker-compose.yml` | the `deployment` repository's `local/compose.yml` | definition of done, lock `deployment-local` |
 
 AI agents should:
 
@@ -81,4 +86,5 @@ AI agents must not:
 nginx:1.30.5
 ```
 
-Stable branch. Pinned in `knowledge/tech-stack.yaml`.
+Stable branch. Pinned in `knowledge/tech-stack.yaml`, which is the source of truth if
+the two ever differ.

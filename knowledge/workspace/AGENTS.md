@@ -40,11 +40,11 @@ AI agents must not:
 |---|---|---|
 | `workspace.name` | yes | Name of the workspace. |
 | `workspace.repo_layout` | yes | `mono` or `multi`. Asked of the human at initialization and never changed afterwards. See **Repository layout mode**. |
-| `workspace.mcp_server` | yes | `true` or `false`. Whether the human asked for an MCP server. See **The MCP server is opt-in**. |
+| `workspace.mcp_server` | yes | `true` or `false`. Whether the human asked for an MCP server. Written at initialization; the Release Agent may later set it to `true` on the human's direct request. See **The MCP server is opt-in**. |
 | `workspace.auto_recommend` | yes | `true` or `false`. Whether agents may take the recommended option without asking. See `knowledge/questions/AGENTS.md`. |
 | `repos[].name` | yes | Repository name. Names only — never a local host path. |
 | `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `mobile`, `batch`, `listener`, `mcp-server`, `journey`. |
-| `repos[].phase` | yes | Creation phase. `1` = create immediately, `2` = create once the requirement analysis says it is needed. |
+| `repos[].phase` | yes | Creation phase. `1` = created by the Workspace Init Agent at initialization, `2` = created by the Release Agent once the requirement analysis that lists it is approved. |
 | `repos[].remote` | no | Git remote link. May be `null` and filled in later. In `mono` layout there is one remote for the whole workspace, so this field stays `null` on every entry. |
 
 ## Repository types
@@ -85,8 +85,8 @@ records the answer, given once at initialization.
 - `false`, or absent, means the repository is never created and nothing MCP-related
   is generated.
 - `false` is not a permanent refusal. If the human later asks for an MCP server
-  directly, append the entry and set the field to `true`. The field exists to stop
-  agents from asking again, not to override an instruction.
+  directly, the Release Agent appends the entry and sets the field to `true`. The field
+  exists to stop agents from asking again, not to override an instruction.
 - At most one, whatever the number of backend domains. One server covers them all.
 
 Full rules: `knowledge/mcp/AGENTS.md`.
@@ -105,11 +105,13 @@ publishes the OpenAPI document that the MCP server is generated from.
 └── README.md
 ```
 
-**Ownership inside this repository is the file, not the repository.** This is a
-deliberate exception to "one repository, one agent", and it is the only one:
+**Ownership inside this repository is the file, not the repository.** This is one of
+the three exceptions to "one repository, one agent" listed in `agents/AGENTS.md`:
 
 - The agent that owns backend X writes `openapi/<X>.json` and nothing else.
 - It must not touch another backend's document, `repos.yaml`, or anything else here.
+  `repos.yaml` is written by the Workspace Init Agent and, for phase 2 repositories, by
+  the Release Agent.
 - Two agents therefore work in this repository at the same time, each in its own
   file. That is allowed precisely because their write sets cannot overlap.
 
@@ -124,16 +126,18 @@ chooses it at initialization; no agent chooses it and no agent changes it afterw
 | Mode | Git layout |
 |---|---|
 | `multi` | One git repository per manifest entry. `git init` runs once per repository. |
-| `mono` | **One** git repository at the workspace root. `git init` runs once, and every repository in the manifest — `registry`, `requirement`, `deployment`, `config`, `tool`, every `backend`, `frontend`, `batch`, `listener` and the `mcp-server` — is a directory inside it. |
+| `mono` | **One** git repository at the workspace root. `git init` runs once, and every repository in the manifest, of every type, is a directory inside it. |
 
 In both modes the manifest is the same list of repositories with the same names and
 types. Only the git boundary moves.
 
 In `mono` mode:
 
-- Coding agents write files and **do not commit**. One commit is made per release,
-  after `preflight/done-check.sh` passes, so parallel agents never contend for the
-  git index and no merge step is introduced.
+- Coding agents write files and **do not commit**. The Release Agent makes one commit
+  per release, after `preflight/done-check.sh` and `preflight/journey-check.sh` pass —
+  so journey rework lands in the same commit — and parallel agents never contend for
+  the git index and no merge step is introduced.
+- `.locks/`, the shared-file lock directory, is git-ignored at the workspace root.
 - There is deliberately no intermediate checkpoint inside a release.
 - `repos[].remote` stays `null`; the single remote belongs to the workspace.
 
@@ -148,12 +152,12 @@ an empty `deployment` and an empty `config`.
 Phase 2 repositories depend on the requirement analysis, which decides how many
 backend repositories are needed (one per domain), how many frontend repositories are
 needed (one per user group, for example a separate admin portal and general-user
-site), and whether the release needs any `batch` or `listener` repositories. They
-are appended to the workspace manifest and created only once that analysis is
-approved.
+site), and whether the release needs any `batch` or `listener` repositories. The
+Requirement Analysis Agent appends them to the workspace manifest, and the Release
+Agent creates them once that analysis is approved.
 
-The `tool` repository is created the first time an agent needs to reach a datastore,
-which in practice is during the first release. It carries `phase: 2`.
+The `tool` repository carries `phase: 2` and is appended when any release needs to
+reach a datastore, which in practice is the first one.
 
 The `mcp-server` repository carries `phase: 2` as well, and is appended only when
 `workspace.mcp_server` is `true`.
@@ -161,6 +165,8 @@ The `mcp-server` repository carries `phase: 2` as well, and is appended only whe
 The `mobile` repositories carry `phase: 2`, one per user group, appended when the
 requirement implies a mobile application.
 
-The `journey` repository carries `phase: 2` and is created the first time journeys are
-written for the workspace, which in practice is the first release that produces a
-clickable system.
+The `journey` repository carries `phase: 2` and is appended when a release produces a
+screen a user walks through.
+
+Every phase 2 repository is created the same way: by the Release Agent, right after the
+analysis that lists it is approved.

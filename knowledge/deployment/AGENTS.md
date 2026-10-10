@@ -16,6 +16,10 @@ from the workspace's `config` repository at deploy time.
 
 It is created empty in phase 1 and filled in as releases need it.
 
+Every Coding Agent adds its own service to `local/`, so `local/` is a shared directory:
+it is written only under the `deployment-local` lock in `agents/AGENTS.md`. Only the
+Release Agent runs `local/deploy.sh`.
+
 ## Layout
 
 ```text
@@ -52,8 +56,8 @@ knowledge templates, not from scratch:
 - `knowledge/mcp/templates/docker-compose.yml`, only when the workspace has an
   `mcp-server`
 
-The Nginx service is required whenever the release has both a frontend and a
-backend: every caller reaches the backend through Nginx only. Unlike the develop
+The Nginx service is required whenever the workspace has a backend: every caller
+reaches the backend through Nginx only. Unlike the develop
 phase, where Nginx runs as a host process, here it is a container like the rest, and
 its upstreams are compose service names.
 
@@ -68,7 +72,7 @@ AI agents should:
   volumes, ports and restart policies.
 - Read every configuration value from the `config` repository.
 - Verify a local deploy with `preflight/done-check.sh`, passing
-  `--gateway <url>` whenever the release has a frontend.
+  `--gateway <url>` whenever the workspace has a backend.
 
 AI agents must not:
 
