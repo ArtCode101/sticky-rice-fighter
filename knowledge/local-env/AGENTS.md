@@ -12,9 +12,10 @@ The local environment is the set of dependency containers a workspace needs whil
 its code is being written: PostgreSQL, Redis and Kafka. Agents start it themselves
 so they can develop against something real.
 
-This capability is **not owned by a specific agent**. Any agent that needs a
-dependency while working may provision and start it. There is no approval step and
-no gate.
+Any agent that needs a dependency while working may provision and start it. There is
+no approval step and no gate. Because several Coding Agents may need it at once, every
+write under `${WORKSPACE_PATH}/local-env/` — except `test/`, which is the Journey Test
+Agent's — is made under the `local-env` lock in `agents/AGENTS.md`.
 
 ## Provisioning
 
@@ -52,13 +53,15 @@ data would be the wrong trade.
 | | Develop zone | Test zone |
 |---|---|---|
 | Lives in | `${WORKSPACE_PATH}/local-env/` | `${WORKSPACE_PATH}/local-env/test/` |
-| Owned by | the Coding Agent | the Journey Test Agent |
-| The application | started natively | built and run as a container |
-| Torn down | only when the human asks | when the human answers "tear them down" after a run |
+| Written by | any Coding Agent, under the `local-env` lock | the Journey Test Agent |
+| Compose project | `$WORKSPACE_NAME` | `$WORKSPACE_NAME-test` |
+| The application | started natively | run as containers from the images the release deployed |
+| Torn down | only when the human asks | automatically, once the release's required journeys pass |
 
 The test zone's rules are in `knowledge/journey/AGENTS.md`. The develop zone's lifecycle
 below applies to the develop zone only. No agent tears down the develop zone because a
-journey finished.
+journey finished, and cleaning up the test zone never touches the develop zone's
+containers, volumes or data.
 
 ## Lifecycle
 
@@ -98,6 +101,8 @@ The local environment is **development scaffolding, not the definition of done**
 - Here: dependency containers, plus backend, frontend and Nginx running as host
   processes (see `knowledge/nginx/`). This is the develop phase.
 - Definition of done: the whole system deployed on the local Docker host from the
-  `deployment` repository and verified with `preflight/done-check.sh`.
+  `deployment` repository and verified with `preflight/done-check.sh`, then its
+  required journeys passed in the test zone and verified with
+  `preflight/journey-check.sh`.
 
 Getting the local environment running never counts as finishing a release.

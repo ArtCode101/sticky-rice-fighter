@@ -1,10 +1,21 @@
+# Every version here is exact, down to the patch. An agent never changes one.
+#
+# The versions that used to name only a major or minor line were pinned on 2026-10-06:
+# Node.js, Next.js, Java, Spring Boot, Python and Redis to the latest patch of that line
+# (checked against nodejs.org, npm, Maven Central, endoflife.date and Docker Hub), and
+# PostgreSQL and Kafka to the image the knowledge templates already used.
+#
+# preflight/checker.sh accepts any patch of the same major version on the developer's
+# machine. What the framework generates — images, build files, engine fields — uses the
+# exact version here.
+
 frontend:
   runtime:
     name: Node.js
-    version: "24"
+    version: "24.21.0"
   framework:
     name: Next.js
-    version: "16"
+    version: "16.3.8"
   libraries:
     - name: "@mui/material"
       version: "9.4.0"
@@ -38,14 +49,14 @@ frontend:
 backend:
   language:
     name: Java
-    version: "25"
+    version: "25.0.4"
   framework:
     name: Spring Boot
-    version: "4.1.x"
+    version: "4.1.1"
   dependencies:
     - name: "spring-boot-starter-webmvc"
       version: "4.1.1"
-    # Generates the OpenAPI document every backend commits to the registry, which
+    # Generates the OpenAPI document every backend writes to the registry, which
     # is the only input the MCP server is built from. See knowledge/mcp/AGENTS.md.
     #
     # Verified 2026-10-02 against Maven Central: the 3.1.x line is built on Spring
@@ -113,7 +124,7 @@ mobile:
   # move one without the other.
   runtime:
     name: Node.js
-    version: "24"                 # the same runtime as the frontend and the MCP server
+    version: "24.21.0"            # the same runtime as the frontend and the MCP server
   framework:
     name: React Native
     version: "0.86.3"
@@ -149,16 +160,20 @@ mobile:
 
 database:
   - name: PostgreSQL
-    version: "16"
+    version: "16.15"              # image postgres:16.15
 
 messaging:
   - name: Kafka
-    version: "4"
+    version: "4.0.0"              # image apache/kafka:4.0.0
+
+cache:
+  - name: Redis
+    version: "8.2.10"             # image redis:8.2.10
 
 testing:
   language:
     name: Python
-    version: "3.13"  # fixed version, used for Playwright
+    version: "3.13.16"  # fixed version, used for Playwright
   tools:
     # Web journeys. See knowledge/journey/AGENTS.md.
     - name: Playwright
@@ -171,7 +186,7 @@ testing:
 internal:
   language:
     name: Python
-    version: "3.13"  # fixed version, Internal tooling
+    version: "3.13.16"  # fixed version, Internal tooling
   tools:
     - name: psycopg
       version: "3.2.4"
@@ -198,7 +213,7 @@ mcp:
   # Verified 2026-10-01 against the npm registry.
   runtime:
     name: Node.js
-    version: "24"                 # the same runtime the frontend uses
+    version: "24.21.0"            # the same runtime the frontend uses
   language:
     name: TypeScript
     version: "7.0.2"
@@ -230,9 +245,9 @@ mcp:
     remote: streamable-http
   auth:
     remote: oauth-2.1
-    # The MCP server holds no signing key. It exchanges the caller's token for a
-    # JWT RS256 at the backend, which already owns the key pair.
-    backend: jwt-rs256-via-token-exchange
+    # The MCP server holds no key. It exchanges the caller's token for the system's
+    # identity token (a nested JWT, see knowledge/auth/AGENTS.md) at the backend.
+    backend: identity-token-via-token-exchange
   http_client: node-builtin-fetch
   # Deliberately NOT locked, because they are deliberately not used:
   #   Express, NestJS or any other HTTP framework - the SDK carries its own transport

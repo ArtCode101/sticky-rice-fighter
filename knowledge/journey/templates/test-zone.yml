@@ -1,0 +1,151 @@
+# The journey test zone.
+#
+# Copied to ${WORKSPACE_PATH}/local-env/test/compose.yml for one release, and removed once
+# every required journey has passed. See knowledge/journey/AGENTS.md.
+#
+# Always run as its own compose project, separate from the develop zone:
+#
+#   docker compose -p "$WORKSPACE_NAME-test" -f compose.yml up -d --wait
+#   docker compose -p "$WORKSPACE_NAME-test" -f compose.yml down --volumes --remove-orphans
+#
+# Keep ONLY the services the release actually uses. A release without Kafka gets no
+# Kafka container here. Dependency services mirror the knowledge templates in
+# knowledge/database/, knowledge/redis/ and knowledge/kafka/, with the same pinned images.
+#
+# The application services run the images the release ALREADY built for its deploy.
+# This zone never builds an image, and cleaning it up never removes one.
+#
+# Host ports default to a different range from the develop zone, so both can run at once.
+#
+# Required:
+#   WORKSPACE_NAME - names the containers, with a -test suffix.
+#   *_IMAGE        - the exact image references the release deployed.
+
+services:
+  postgres:
+    image: postgres:16.15
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-postgres
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-artdb}
+      POSTGRES_USER: ${POSTGRES_USER:-artuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-artpassword}
+
+    ports:
+      - "${TEST_POSTGRES_PORT:-15432}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-artuser} -d ${POSTGRES_DB:-artdb}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:8.2.10
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-redis
+
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-artpassword}"]
+
+    ports:
+      - "${TEST_REDIS_PORT:-16379}:6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-artpassword} ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-kafka
+
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:${TEST_KAFKA_PORT:-19094}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-artkafkacluster1}
+
+    ports:
+      - "${TEST_KAFKA_PORT:-19094}:9094"
+
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # One entry per backend the release deployed. Configuration points at the services
+  # above by compose name, never at the develop zone.
+  backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-backend
+
+    healthcheck:
+      # spring-boot-starter-actuator is pinned in knowledge/tech-stack.yaml.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # One entry per frontend the release deployed.
+  frontend:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-frontend
+
+  # The test zone's gateway. Journeys reach the backend through it and nothing else.
+  nginx:
+    image: nginx:1.30.5
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-nginx
+
+    ports:
+      - "${TEST_NGINX_PORT:-18000}:8000"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+# Test data lives here. `down --volumes` removes it with the zone.
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:

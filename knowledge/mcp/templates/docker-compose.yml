@@ -9,12 +9,14 @@
 #
 # Required:
 #   WORKSPACE_NAME - names the container, matching the workspace's other services.
+#   MCP_IMAGE_TAG  - the tag knowledge/versioning/AGENTS.md gives this image: latest in
+#                    mono layout, the mcp-server repository's git tag in multi layout.
 
 services:
   mcp-server:
     build:
       context: ../../<workspace>-mcp-server
-    image: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-mcp-server:0.1.0
+    image: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-mcp-server:${MCP_IMAGE_TAG:?MCP_IMAGE_TAG is required}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-mcp-server
 
     ports:

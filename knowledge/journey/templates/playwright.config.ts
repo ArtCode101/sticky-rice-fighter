@@ -5,13 +5,13 @@
 // is clicking through.
 //
 // Desktop or background mode is the human's answer to the mode question, passed in as
-// JOURNEY_MODE. A journey that needs someone to click is forced to desktop and does not
-// get asked; see knowledge/journey/AGENTS.md.
+// JOURNEY_MODE. Desktop is the default. A journey that needs someone to click is forced
+// to desktop and does not get asked; see knowledge/journey/AGENTS.md.
 
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
-// 'desktop' shows the browser, 'background' is headless.
-const MODE = process.env.JOURNEY_MODE ?? 'background';
+// 'desktop' shows the browser, 'background' is headless. Default: desktop.
+const MODE = process.env.JOURNEY_MODE ?? 'desktop';
 
 export default defineConfig({
   testDir: '.',
@@ -26,11 +26,25 @@ export default defineConfig({
     // The test zone's gateway. Always Nginx, never a backend port.
     baseURL: process.env.JOURNEY_BASE_URL,
     headless: MODE !== 'desktop',
+    // Evidence for the run report when a journey fails. Deleted at cleanup, once the
+    // run report has recorded what it showed.
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
 
-  // A failing journey reports. It does not gate a release: a failure becomes a
-  // type: change release, like any defect found by clicking.
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // Journeys run in a desktop browser at a desktop viewport, in both modes. The mode
+  // only decides whether the window is visible.
+  projects: [{ name: 'desktop-chrome', use: { ...devices['Desktop Chrome'] } }],
+
+  // A journey passes only by running. A failing required journey sends the release
+  // into rework (at most 3 rounds), and its retry is the rework round, not a
+  // Playwright retry: a journey that passes on the second try still failed once.
+  retries: 0,
+  // The JSON report is what preflight/journey-check.sh reads. JOURNEY_REPORT_FILE is
+  // runs/release-<n>/run-<k>.web.json; it is kept, unlike test-results/ and the HTML.
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ['json', { outputFile: process.env.JOURNEY_REPORT_FILE ?? 'journey-report.json' }],
+  ],
 });

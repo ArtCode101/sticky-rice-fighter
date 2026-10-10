@@ -1,5 +1,86 @@
 # Release Notes
 
+## Unreleased
+
+### Journeys gate the release, with a bound
+
+A release used to be done when it deployed and its containers started. It is now done
+only when a real user's journeys through it have been **executed** and have **passed**.
+This reverses the v1.0.0 rule that journey tests report and never gate.
+
+- **Order inside a release.** Implement and run natively, build images, deploy and pass
+  `done-check.sh`, then write or update the journeys for the release's scope, provision
+  the test zone, run the journeys, clean up, and lock.
+- **Executed, not generated.** A Playwright or Maestro script that has not run proves
+  nothing. Desktop browser mode is now the default and the recommended answer.
+- **Rework loop.** A failing required journey produces evidence and a root cause in the
+  run report. The Coding Agent that owns the repository fixes, rebuilds and redeploys,
+  or the Journey Test Agent fixes its own script, and then every required journey runs
+  again.
+- **Bounded at 3 rounds.** After round 3 the loop stops, the test zone stays up, and the
+  human is asked: lock anyway, three more rounds, or leave the release open. That
+  question has no recommended option and is always asked, even in auto mode.
+- **No weakening.** A fix may change how a step is performed, never whether it is
+  performed or what is asserted. The required journeys are fixed before the first run.
+- **Test zone.** Its own compose project, `$WORKSPACE_NAME-test`, with only the
+  dependencies the release uses, running the images the release deployed. It no longer
+  builds images of its own. Once the journeys pass it is removed without asking:
+  containers, volumes, networks and run output. The "keep the test resources?" question
+  is gone.
+- **New:** `preflight/journey-check.sh`, which reads the release's run report and
+  confirms with Docker that nothing of the test zone is left.
+  `knowledge/journey/templates/run-report.md` and `templates/test-zone.yml`.
+- **Mono layout** makes its single release commit after both `done-check.sh` and
+  `journey-check.sh` pass, so journey rework lands in the same commit.
+- Releases with no screen (an `mcp-server` alone, batch jobs, listeners) have no
+  required journeys, and `done-check.sh` alone decides them.
+
+### Every step has an owner, and every rule has one home
+
+An audit of the framework's context found steps no agent owned, files that contradicted
+each other, and rules repeated in up to six places, which is where agents drift. This
+release closes them.
+
+- **New: the Release Agent** (`agents/release-agent.md`). It creates the phase 2
+  repositories, starts each release (`in_progress`), spawns the Coding Agents, deploys,
+  relays journey rework, makes the single `mono` commit, locks the release and reads
+  `release_execution`. Before this, no agent was allowed to do most of these. It is not
+  a reviewer: its decisions come from files, script exit codes and the human's answers.
+- **Only the Release Agent deploys.** Coding Agents build their image and add their
+  service to the deployment's `local/`; parallel agents no longer deploy over each
+  other.
+- **Shared files are written one agent at a time.** `local-env/`, the deployment's
+  `local/`, the config's `local/` and the `tool` repository are written under an atomic
+  `mkdir` lock in `${WORKSPACE_PATH}/.locks/`. This is the third listed exception to
+  "one repository, one agent", next to `mono` and `registry/openapi/`.
+- **Three init questions, everywhere.** `agents/AGENTS.md` said two and forbade more.
+- **Identity token is a nested JWT.** Signed with RS256, then encrypted as a JWE
+  (`RSA-OAEP-256`, `A256GCM`). Each authentication group has a signing pair and an
+  encryption pair, per environment. The old wording, "JWE signed with RS256", mixed the
+  two layers up. Key layout: `keys/<group>/<environment>/` in the `config` repository.
+- **Nginx is in every workspace that has a backend.** It used to require a frontend
+  too, which left a mobile-only or MCP-only system without its mandatory gateway.
+- **The MCP server is always its own release**, after the backends it wraps, and is
+  regenerated in the release after any change to a backend's API. Its compose template
+  now takes its tag by layout instead of a hard-coded `0.1.0`.
+- **`journey-check.sh` reads the runner's own report.** Playwright's JSON and Maestro's
+  JUnit output for the last run are kept under `runs/release-<n>/`, and every journey
+  marked `passed` must pass there too. It also checks `rounds` against `max_rounds`, and
+  accepts `result: accepted` only after a recorded `lock-anyway` answer.
+- **`done-check.sh --mcp` speaks the protocol.** It initializes a session, lists tools,
+  and calls the tool named by `--mcp-tool` with `--mcp-args`, with an optional
+  `--mcp-token`. It used to call the first tool with no arguments and no session.
+- **Inputs tables completed.** The Coding Agent now reads the deployment, config and
+  requirement rules; the Journey Test Agent reads the gateway, versioning and deployment
+  rules. Knowledge files are not loaded automatically, so a missing row meant an unread
+  rule.
+- **One home per rule.** Root `AGENTS.md` and `README.md` now summarize each topic in a
+  line and link to its single source, instead of restating it.
+- **Exact versions.** Node.js 24.21.0, Next.js 16.3.8, Java 25.0.4, Spring Boot 4.1.1,
+  Python 3.13.16, PostgreSQL 16.15, Kafka 4.0.0 and Redis 8.2.10 (`redis:8.2.10`).
+- Smaller fixes: the `mono` directory list names every type, `NOTES.md` quotes are in
+  English, and compiled `__pycache__` files are no longer committed.
+
 ## v1.0.0 — 2026-10-05
 
 The first tagged release of the framework. It is an AI agent framework that builds
