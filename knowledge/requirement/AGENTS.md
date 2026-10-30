@@ -51,7 +51,7 @@ project generation.
 
 Every `release.md` carries a `status` in its front matter. The Requirement Analysis
 Agent writes `draft`; the **Release Agent** is the only agent that changes it, and the
-only one that fills in `deployed_at` and `commit` (`agents/release-agent.md`).
+only one that fills in `deployed_at` and `commit` (`skills/release/SKILL.md`).
 
 | Status | Meaning | Editable |
 |---|---|---|

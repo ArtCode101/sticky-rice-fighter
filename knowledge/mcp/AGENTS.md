@@ -47,7 +47,7 @@ The MCP server is built only when the human asked for one.
 - `false`, or absent, means **do not build it**. No agent creates an `mcp-server`
   repository on its own initiative.
 - `false` is not a permanent refusal. If the human later asks for an MCP server
-  directly, the Release Agent sets the field to `true` (`agents/release-agent.md`) and
+  directly, the Release Agent sets the field to `true` (`skills/release/SKILL.md`) and
   the MCP work goes through the Requirement Analysis Agent as its own release. The field
   stops agents from asking again; it does not override a direct instruction.
 

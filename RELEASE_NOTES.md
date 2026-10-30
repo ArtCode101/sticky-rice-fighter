@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+### The framework is a plugin, and runs from the workspace
+
+The framework used to be driven from its own checkout: open a terminal there, point
+`.env` at a workspace, keep `flag.yml` on `mode: working`. It is now a Claude Code
+plugin, `srf`, installed once and driven from inside the workspace.
+
+- **Install and use.** `claude plugin marketplace add ArtCode101/sticky-rice-fighter`,
+  `claude plugin install srf@sticky-rice-fighter`, then open Claude Code in the
+  directory to build in and run `/srf:init`, `/srf:analyze`, `/srf:release`.
+- **The workspace is where Claude Code was opened.** `WORKSPACE_PATH` is
+  `${CLAUDE_PROJECT_DIR}`, and the framework is `${CLAUDE_PLUGIN_ROOT}`. Every
+  `knowledge/...` and `preflight/...` path is relative to the latter. `.env` and
+  `.env.example` are gone. The rule lives in `knowledge/flow/AGENTS.md` → **Where the
+  files are**.
+- **Skills and subagents.** The Workspace Init, Requirement Analysis and Release
+  Agents are skills (`skills/init`, `skills/analyze`, `skills/release`), because they
+  talk to the human. The Coding and Journey Test Agents are subagents in `agents/`,
+  spawned by `/srf:release`. `agents/AGENTS.md` moved to `knowledge/flow/AGENTS.md`.
+- **No operating mode.** `flag.yml` and `preflight/mode-guard.sh` are gone. The plugin
+  ships `hooks/guard-framework.js`, a `PreToolUse` hook that blocks every write under
+  the plugin root unless that root is the project Claude Code was opened in, which is
+  the framework author. Claude Code's own prompt for writes outside the opened
+  directory is the second line.
+- **`release_execution` moved into the workspace.** It is a per-workspace value, so it
+  now lives in `workspace.yaml` as `workspace.release_execution`, written as `manual`
+  by `/srf:init` and changed only by the human.
+- **`CLAUDE.md` in the workspace.** `/srf:init` places
+  `knowledge/workspace/templates/CLAUDE.md` at the workspace root, so the framework's
+  rules load from the first message of every later session there. A plugin cannot
+  supply always-on instructions on its own.
+- Plugin version `2.0.0`, in `.claude-plugin/plugin.json` and `marketplace.json`.
+
 ### Journeys gate the release, with a bound
 
 A release used to be done when it deployed and its containers started. It is now done

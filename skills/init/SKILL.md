@@ -1,3 +1,9 @@
+---
+name: init
+description: Initialize a greenfield workspace in the directory Claude Code was opened in. Asks the three questions, writes workspace.yaml and CLAUDE.md, creates the phase 1 repositories. Runs once per workspace.
+disable-model-invocation: true
+---
+
 # Workspace Init Agent
 
 ## Role
@@ -11,26 +17,42 @@ This agent does not analyze requirements and does not write product code.
 
 | Input | Source |
 |---|---|
-| `WORKSPACE_PATH` | `.env` in the framework repository |
-| Operating mode | `flag.yml` in the framework repository |
+| `WORKSPACE_PATH` | the directory Claude Code was opened in, `${CLAUDE_PROJECT_DIR}` |
 | Manifest template | `knowledge/workspace/templates/workspace.yaml` |
+| Workspace instructions template | `knowledge/workspace/templates/CLAUDE.md` |
 | Manifest schema and rules | `knowledge/workspace/AGENTS.md` |
 | Three answers from the human | Asked at initialization. See **Three questions for the human**. |
 | Question protocol | `knowledge/questions/AGENTS.md` |
 
+## Where the files are
+
+- **The framework is this plugin**, at `${CLAUDE_PLUGIN_ROOT}`. Every `knowledge/...`,
+  `preflight/...` and `agents/...` path here and in the knowledge files is relative to
+  it. Read `knowledge/flow/AGENTS.md` first; the rule behind this section is there.
+- **The workspace is the directory Claude Code was opened in**, `${CLAUDE_PROJECT_DIR}`.
+  That is `WORKSPACE_PATH`, and every `${WORKSPACE_PATH}` path means this directory.
+  There is no `.env`.
+- **The framework is read-only.** A hook blocks every write under
+  `${CLAUDE_PLUGIN_ROOT}`. A blocked write is reported to the human, never worked around.
+
 ## Procedure
 
-1. Read `WORKSPACE_PATH` from `.env`. Stop and report if it is missing or the
-   path does not exist.
-2. Run `preflight/checker.sh`. Stop and report if the machine is not ready.
-3. Run `preflight/mode-guard.sh` to learn the operating mode. Regardless of the
-   result, never write inside the framework repository during initialization.
+1. `WORKSPACE_PATH` is `${CLAUDE_PROJECT_DIR}`. Stop and report if it already holds a
+   `workspace.yaml`: that workspace is initialized, and this skill runs once.
+2. Run `${CLAUDE_PLUGIN_ROOT}/preflight/checker.sh`, or
+   `${CLAUDE_PLUGIN_ROOT}\preflight\checker.bat` on Windows. Stop and report if the
+   machine is not ready.
+3. Take the workspace name from the directory's name, unless the human gives another.
 4. **Ask the human the three questions below**, one at a time, and record the answers.
    Ask them before writing the manifest, because all three answers go into it.
 5. If `${WORKSPACE_PATH}/workspace.yaml` does not exist, copy the template there
    and replace the placeholder workspace and repository names with real ones
    derived from the workspace name. Write `repo_layout`, `mcp_server` and
-   `auto_recommend` from the answers to step 4.
+   `auto_recommend` from the answers to step 4; `release_execution` stays at the
+   template's `manual`, for the human to flip later.
+   Then copy `knowledge/workspace/templates/CLAUDE.md` to `${WORKSPACE_PATH}/CLAUDE.md`,
+   with the workspace name filled in, unless one exists. It is what makes the
+   framework's rules apply from the first message of every later session here.
 6. Read `${WORKSPACE_PATH}/workspace.yaml`.
 7. Initialize git according to `workspace.repo_layout`:
    - `multi`: for every entry with `phase: 1`, create `${WORKSPACE_PATH}/<name>/`,
@@ -39,7 +61,7 @@ This agent does not analyze requirements and does not write product code.
    - `mono`: run `git init` **once** at `${WORKSPACE_PATH}`, create
      `${WORKSPACE_PATH}/<name>/` for every entry with `phase: 1` as a directory
      inside it, add `.locks/` to the workspace root's `.gitignore` (see the shared-file
-     lock in `agents/AGENTS.md`), and make one initial commit covering all of them.
+     lock in `knowledge/flow/AGENTS.md`), and make one initial commit covering all of them.
 8. Give each created repository a `README.md` naming the repository and its type.
    The `deployment` and `config` repositories stay otherwise empty: their scripts
    and configuration are added later, not here.
@@ -88,7 +110,7 @@ Do you want an MCP server for this system, so an outside AI agent can drive it?
 - Write the answer to `workspace.mcp_server`.
 - A `false` here is not a permanent refusal. If the human later asks for an MCP server
   directly, the Release Agent sets the field to `true`; see
-  `agents/release-agent.md`. The field stops agents from asking again; it does not
+  `skills/release/SKILL.md`. The field stops agents from asking again; it does not
   override an instruction.
 
 ### 3. May agents take the option they recommend, without asking?
@@ -112,12 +134,13 @@ without stopping to ask you?
 
 These three questions are **inputs, not gates**. They collect a parameter before work
 starts. They are not a checkpoint, nothing is being approved, and no agent judges
-anything. The framework still has exactly the two checkpoints in `agents/AGENTS.md`.
+anything. The framework still has exactly the two checkpoints in `knowledge/flow/AGENTS.md`.
 
 ## Outputs
 
 - `${WORKSPACE_PATH}/workspace.yaml`, with `repo_layout`, `mcp_server` and
-  `auto_recommend` filled in
+  `auto_recommend` filled in, and `release_execution: manual`
+- `${WORKSPACE_PATH}/CLAUDE.md`, from the template
 - Git initialized according to `repo_layout`: one repository per phase 1 manifest
   entry in `multi`, or a single repository at the workspace root in `mono`, with an
   initial commit either way
@@ -132,8 +155,8 @@ anything. The framework still has exactly the two checkpoints in `agents/AGENTS.
 - Ask the three questions in one message. One at a time.
 - Apply `auto_recommend` to question 3 itself.
 - Change `repo_layout`, `mcp_server` or `auto_recommend` once they are written. Only the
-  human revisits those; the single exception is in `agents/release-agent.md`.
-- Write any file inside the framework repository.
+  human revisits those; the single exception is in `skills/release/SKILL.md`.
+- Write any file inside the framework, `${CLAUDE_PLUGIN_ROOT}`.
 - Store a local host path in the manifest or the registry.
 - Write product code, deploy scripts or configuration content.
 - Create more than one `registry` or more than one `requirement` repository.

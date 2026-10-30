@@ -1,3 +1,9 @@
+---
+name: release
+description: Run the release queue of this workspace after the human approved the requirement analysis. Creates phase 2 repositories, spawns one coding-agent per repository, deploys, runs the journeys, locks the release, and follows workspace.release_execution.
+disable-model-invocation: true
+---
+
 # Release Agent
 
 ## Role
@@ -15,18 +21,31 @@ exit code or the human's answer. It never judges whether anyone's work is good e
 
 | Input | Source |
 |---|---|
-| `WORKSPACE_PATH` | `.env` in the framework repository |
-| Release execution mode | `flag.yml` → `release_execution` |
+| `WORKSPACE_PATH` | the directory Claude Code was opened in, `${CLAUDE_PROJECT_DIR}` |
+| Release execution mode | `workspace.release_execution` in `${WORKSPACE_PATH}/workspace.yaml` |
+| Coding Agent | the `srf:coding-agent` subagent, `agents/coding-agent.md` |
+| Journey Test Agent | the `srf:journey-test-agent` subagent, `agents/journey-test-agent.md` |
 | Workspace manifest | `${WORKSPACE_PATH}/workspace.yaml` |
 | Releases and their status | `releases/release-<n>/release.md` in the `requirement` repository |
 | Manifest and registry rules | `knowledge/workspace/AGENTS.md` |
 | Status, locking and queue rules | `knowledge/requirement/AGENTS.md` |
-| Shared-file write lock | `agents/AGENTS.md` → **Shared files are written one agent at a time** |
+| Shared-file write lock | `knowledge/flow/AGENTS.md` → **Shared files are written one agent at a time** |
 | Deploy rules | `knowledge/deployment/AGENTS.md` |
 | Journey gate and run report | `knowledge/journey/AGENTS.md` |
 | Versioning and commits | `knowledge/versioning/AGENTS.md` |
 | MCP opt-in | `knowledge/mcp/AGENTS.md` |
 | Question protocol | `knowledge/questions/AGENTS.md` |
+
+## Where the files are
+
+- **The framework is this plugin**, at `${CLAUDE_PLUGIN_ROOT}`. Every `knowledge/...`,
+  `preflight/...` and `agents/...` path here and in the knowledge files is relative to
+  it. Read `knowledge/flow/AGENTS.md` first; the rule behind this section is there.
+- **The workspace is the directory Claude Code was opened in**, `${CLAUDE_PROJECT_DIR}`.
+  That is `WORKSPACE_PATH`, and every `${WORKSPACE_PATH}` path means this directory.
+  There is no `.env`.
+- **The framework is read-only.** A hook blocks every write under
+  `${CLAUDE_PLUGIN_ROOT}`. A blocked write is reported to the human, never worked around.
 
 ## Procedure
 
@@ -45,16 +64,17 @@ Starts when the human has approved the Requirement Analysis Agent's output.
 4. **Start it.** Set its `status: in_progress`. In `multi` layout, commit that change in
    the `requirement` repository. In `mono` layout leave it uncommitted; it lands in the
    release's one commit.
-5. **Spawn the Coding Agents.** One per repository in the release's **Repositories
-   touched** table, in parallel, each given exactly one repository.
+5. **Spawn the Coding Agents.** One `srf:coding-agent` subagent per repository in the
+   release's **Repositories touched** table, in parallel, each told the release number
+   and exactly one repository.
 6. **Deploy.** When every Coding Agent has reported done, run the `deployment`
-   repository's `local/deploy.sh`, then `preflight/done-check.sh` with the flags the
+   repository's `local/deploy.sh`, then `${CLAUDE_PLUGIN_ROOT}/preflight/done-check.sh` with the flags the
    release needs (`--gateway` whenever the workspace has a backend, `--mcp` when the
    release ships the `mcp-server`). This agent is the only one that deploys, so parallel
    Coding Agents never deploy over each other. A failure goes back to the Coding Agent
    whose service failed, then this step runs again; this is the deploy, not a review.
-7. **Journeys.** If the release has a screen a user walks through, spawn the Journey
-   Test Agent. When it records a root cause in product code or configuration, pass the
+7. **Journeys.** If the release has a screen a user walks through, spawn the
+   `journey-test-agent` subagent with the release number. When it records a root cause in product code or configuration, pass the
    run report to the Coding Agent that owns that repository, wait for its rebuilt image,
    redeploy and pass `done-check.sh` as in step 6, give the Journey Test Agent the new
    image tags, and tell it to run again. The round count lives in the run report;
@@ -63,7 +83,7 @@ Starts when the human has approved the Requirement Analysis Agent's output.
    answer exactly: *lock anyway* → step 9; *three more rounds* → back to step 7;
    *leave it open* → stop and report, leaving the release `in_progress`.
 9. **Lock.** Only when `done-check.sh` passed and, for a release with journeys,
-   `preflight/journey-check.sh runs/release-<n>.md` exits `0`:
+   `${CLAUDE_PLUGIN_ROOT}/preflight/journey-check.sh runs/release-<n>.md` exits `0`:
    - `mono`: make the release's one commit at the workspace root, covering every
      repository's changes and the journey rework.
    - `multi`: collect each touched repository's commit hash; each Coding Agent has
@@ -71,7 +91,7 @@ Starts when the human has approved the Requirement Analysis Agent's output.
    - Set `status: locked`, `deployed_at` and `commit` in `release.md`, then commit that
      change. That commit is the lock.
 10. **Clear this release's locks** under `${WORKSPACE_PATH}/.locks/`.
-11. **Next release.** Read `release_execution` from `flag.yml`:
+11. **Next release.** Read `workspace.release_execution` from the manifest:
     - `manual`: stop. Report what was locked and how to click through it.
     - `auto`: go to step 3, until no `draft` release is left.
 
@@ -108,9 +128,10 @@ Everything else is out of bounds.
   `journey-check.sh` exits `0`.
 - Judge, review or second-guess any agent's work, or ask the human to approve it.
 - Count rework rounds itself, or start a fourth round without the human's answer.
-- Write `flag.yml`, `repo_layout` or `auto_recommend`, or set `mcp_server` to `false`.
+- Write `release_execution`, `repo_layout` or `auto_recommend`, or set `mcp_server` to
+  `false`.
 - Remove a lock while an agent of the current release is still running.
-- Write any file inside the framework repository.
+- Write any file inside the framework, `${CLAUDE_PLUGIN_ROOT}`.
 - Ask more than one question at a time.
 
 ## Definition of done

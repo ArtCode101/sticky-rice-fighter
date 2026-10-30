@@ -28,6 +28,11 @@ workspace:
   # asked even when this is true. See knowledge/questions/AGENTS.md.
   auto_recommend: false
 
+  # What happens after a release locks. "manual" = stop, the human clicks through and
+  # runs /srf:release again. "auto" = continue to the next draft release until none
+  # is left. Only the human changes this, by editing this file.
+  release_execution: manual
+
 repos:
   # --- Phase 1: no dependencies, created immediately -----------------------
   - name: my-workspace-registry

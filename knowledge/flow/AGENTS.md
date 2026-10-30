@@ -4,20 +4,25 @@
 
 This file applies to all files under:
 
-`agents/`
+`skills/` and `agents/`
 
-It is the single source for the flow, the gates, concurrency and file ownership. Other
+and to every agent working in a workspace. It is the single source for the flow, the
+gates, concurrency, file ownership, and where the framework and the workspace are. Other
 files summarize these rules in a line and link here.
 
 ## Agents
 
-| Agent | Definition | Human gate |
-|---|---|---|
-| Workspace Init Agent | `agents/workspace-init-agent.md` | no |
-| Requirement Analysis Agent | `agents/requirement-analysis-agent.md` | **yes** |
-| Release Agent | `agents/release-agent.md` | no |
-| Coding Agent | `agents/coding-agent.md` | no |
-| Journey Test Agent | `agents/journey-test-agent.md` | no |
+| Agent | Definition | Runs as | Human gate |
+|---|---|---|---|
+| Workspace Init Agent | `skills/init/SKILL.md` | `/srf:init`, in the human's session | no |
+| Requirement Analysis Agent | `skills/analyze/SKILL.md` | `/srf:analyze`, in the human's session | **yes** |
+| Release Agent | `skills/release/SKILL.md` | `/srf:release`, in the human's session | no |
+| Coding Agent | `agents/coding-agent.md` | the `srf:coding-agent` subagent, spawned by `/srf:release` | no |
+| Journey Test Agent | `agents/journey-test-agent.md` | the `srf:journey-test-agent` subagent, spawned by `/srf:release` | no |
+
+The three that talk to the human run in the human's own session, because they ask
+questions and wait for answers. The two that only build run as subagents, so several
+can run in parallel.
 
 There is deliberately no QA agent and no reviewer agent. Adding one reintroduces
 the loop this framework exists to avoid.
@@ -71,7 +76,7 @@ all required journeys pass  --->  test zone removed  --->  preflight/journey-che
 Release Agent               --->  locks the release
       |
       v
-flag.yml release_execution:  manual -> wait for human
+workspace.release_execution: manual -> wait for human
                              auto   -> next release
 ```
 
@@ -167,24 +172,40 @@ is overwritten, not reconciled. A defect a required journey exposes is fixed in 
 release's rework. Every other defect — one the human finds by clicking, or one in an
 earlier release's journey — comes back as a `type: change` release.
 
+## Where the files are
+
+The framework is a Claude Code plugin. Its root is `${CLAUDE_PLUGIN_ROOT}`, and every
+`knowledge/...`, `preflight/...`, `skills/...` and `agents/...` path in the framework is
+relative to that root. The workspace is the directory the human opened Claude Code in,
+`${CLAUDE_PROJECT_DIR}`; that directory **is** `WORKSPACE_PATH`, and it is the only
+definition of it. The framework is never opened in a workspace's place and the workspace
+is never inside the framework.
+
+The framework is read-only wherever it is installed. The plugin's `guard-framework` hook
+blocks `Edit`, `Write` and `NotebookEdit` under `${CLAUDE_PLUGIN_ROOT}`, and Claude Code
+asks before any write outside the workspace. The one exception is the framework author,
+who opens the framework repository itself; the hook recognizes that case.
+
 ## Shared rules
 
 Every agent must:
 
-- Read `flag.yml` before writing, and never write inside the framework repository
-  while `mode: working`.
-- Never write `flag.yml`, in either mode.
+- Never write inside the framework, `${CLAUDE_PLUGIN_ROOT}`. A blocked write is
+  reported to the human, not worked around.
+- Never write `workspace.release_execution`. Only the human flips it.
 - Write only inside `WORKSPACE_PATH`, and within it only where its own definition
   says it may. Product code goes in the one repository it was assigned; the
   supporting paths each agent may also touch are listed in its definition.
 - Take the lock above before writing a shared file.
-- Read every knowledge file its definition's **Inputs** table lists. Those files are not
-  loaded automatically: the workspace lives outside this repository.
+- Read every knowledge file its definition's **Inputs** table lists, from
+  `${CLAUDE_PLUGIN_ROOT}`. Those files are not loaded automatically: the workspace lives
+  outside the framework.
 - Reach PostgreSQL, Kafka and Redis only through the Python tools in the `tool`
   repository, against a local host (`knowledge/tools/AGENTS.md`).
 - Route every call to a backend through Nginx only (`knowledge/nginx/AGENTS.md`).
-- Read `workspace.repo_layout`, `workspace.mcp_server` and `workspace.auto_recommend`
-  from `${WORKSPACE_PATH}/workspace.yaml` rather than asking the human again. Only the
+- Read `workspace.repo_layout`, `workspace.mcp_server`, `workspace.auto_recommend` and
+  `workspace.release_execution` from `${WORKSPACE_PATH}/workspace.yaml` rather than
+  asking the human again. Only the
   Workspace Init Agent writes them, once; the single later change is the Release Agent
   setting `mcp_server` to `true` on the human's direct request.
 - Ask questions only in the shape `knowledge/questions/AGENTS.md` defines, one at a time.

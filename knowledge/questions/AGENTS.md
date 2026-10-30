@@ -100,7 +100,7 @@ A question collects a parameter the agent needs in order to work. It is not a
 checkpoint, nothing is being approved, and no agent judges another's output through
 one.
 
-The framework has exactly two checkpoints, listed in `agents/AGENTS.md`, and this file
+The framework has exactly two checkpoints, listed in `knowledge/flow/AGENTS.md`, and this file
 adds none. An agent must never use a question to hold work for review, to ask whether
 its own output is good enough, or to ask permission to continue with something it is
 already allowed to do.
