@@ -1,0 +1,22 @@
+{
+  "name": "sticky-rice-fighter",
+  "version": "2.0.0",
+  "description": "Installs the sticky-rice-fighter (srf) Claude Code plugin: an agent framework that builds a system release by release.",
+  "bin": {
+    "sticky-rice-fighter": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "LICENSE"
+  ],
+  "keywords": ["claude-code", "plugin", "agents", "framework", "release"],
+  "author": "ArtCode101",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArtCode101/sticky-rice-fighter.git"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
