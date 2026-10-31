@@ -15,7 +15,7 @@ so they can develop against something real.
 Any agent that needs a dependency while working may provision and start it. There is
 no approval step and no gate. Because several Coding Agents may need it at once, every
 write under `${WORKSPACE_PATH}/local-env/` — except `test/`, which is the Journey Test
-Agent's — is made under the `local-env` lock in `agents/AGENTS.md`.
+Agent's — is made under the `local-env` lock in `knowledge/flow/AGENTS.md`.
 
 ## Provisioning
 

@@ -17,7 +17,9 @@ File:
 
 `knowledge/workspace/templates/workspace.yaml`
 
-Use this file as the standard workspace manifest reference.
+Use this file as the standard workspace manifest reference. Next to it,
+`templates/CLAUDE.md` is the instructions file the Workspace Init Agent places at the
+workspace root, so the framework's rules load in every later session there.
 
 AI agents should:
 
@@ -42,6 +44,7 @@ AI agents must not:
 | `workspace.repo_layout` | yes | `mono` or `multi`. Asked of the human at initialization and never changed afterwards. See **Repository layout mode**. |
 | `workspace.mcp_server` | yes | `true` or `false`. Whether the human asked for an MCP server. Written at initialization; the Release Agent may later set it to `true` on the human's direct request. See **The MCP server is opt-in**. |
 | `workspace.auto_recommend` | yes | `true` or `false`. Whether agents may take the recommended option without asking. See `knowledge/questions/AGENTS.md`. |
+| `workspace.release_execution` | yes | `manual` or `auto`. What the Release Agent does after a release locks: `manual` stops for the human to click through, `auto` continues to the next `draft` release. Written as `manual` at initialization; only the human changes it, by editing the file. See **Release execution**. |
 | `repos[].name` | yes | Repository name. Names only — never a local host path. |
 | `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `mobile`, `batch`, `listener`, `mcp-server`, `journey`. |
 | `repos[].phase` | yes | Creation phase. `1` = created by the Workspace Init Agent at initialization, `2` = created by the Release Agent once the requirement analysis that lists it is approved. |
@@ -106,7 +109,7 @@ publishes the OpenAPI document that the MCP server is generated from.
 ```
 
 **Ownership inside this repository is the file, not the repository.** This is one of
-the three exceptions to "one repository, one agent" listed in `agents/AGENTS.md`:
+the three exceptions to "one repository, one agent" listed in `knowledge/flow/AGENTS.md`:
 
 - The agent that owns backend X writes `openapi/<X>.json` and nothing else.
 - It must not touch another backend's document, `repos.yaml`, or anything else here.
@@ -117,6 +120,20 @@ the three exceptions to "one repository, one agent" listed in `agents/AGENTS.md`
 
 The document is regenerated as part of the backend's own release work, so it moves
 with the code rather than drifting behind it.
+
+## Release execution
+
+`workspace.release_execution` decides whether the human is asked before the next release
+starts. Releases always run one at a time in ascending release number, in both modes.
+
+| Value | Behavior after a release is locked |
+|---|---|
+| `manual` | Stop. The human clicks through the running system and explicitly runs `/srf:release` again. |
+| `auto` | Continue to the next `draft` release immediately, until none is left. |
+
+It is not one of the three questions. The Workspace Init Agent writes `manual`, and the
+human edits the manifest to change it. No agent writes it, ever. The question the Journey
+Test Agent asks when the rework rounds run out is asked in both modes.
 
 ## Repository layout mode
 

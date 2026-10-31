@@ -1,16 +1,57 @@
 # sticky-rice-fighter
 
-An AI agent framework for building systems in a separate workspace, designed
-around fast feedback: one human approval at the start, then agents run without
-human gates until the release actually runs on a local Docker host and a real user's
-journeys through it have been executed and passed.
+An AI agent framework for building systems, designed around fast feedback: one human
+approval at the start, then agents run without human gates until the release actually
+runs on a local Docker host and a real user's journeys through it have been executed
+and passed.
 
-This repository is the **framework**. It holds knowledge, rules and agent
-definitions. No product code is ever written here.
+It is packaged as a **Claude Code plugin** named `srf`. You install it once, open
+Claude Code in the directory you want to build in, and drive it with three skills.
+This repository is the framework: knowledge, rules, skills and subagent definitions.
+No product code is ever written here.
 
 This README is an overview for people. Every rule lives in exactly one file, listed in
 **Where each rule lives** in `AGENTS.md`; when this page and that file disagree, the
 file is right.
+
+## Install
+
+```bash
+claude plugin marketplace add ArtCode101/sticky-rice-fighter
+```
+
+```bash
+claude plugin install srf@sticky-rice-fighter --scope user
+```
+
+`--scope user` makes the skills available in every directory you open. Later versions
+arrive with `claude plugin update srf@sticky-rice-fighter`.
+
+The machine needs Java 25, Node.js 24 with npm, Docker and Python 3.13. `/srf:init`
+checks them with `preflight/checker.sh` (`checker.bat` on Windows) before it does
+anything else.
+
+## Use
+
+```bash
+mkdir my-workspace && cd my-workspace
+```
+
+```bash
+claude
+```
+
+Then, inside Claude Code:
+
+| Skill | When | What it does |
+|---|---|---|
+| `/srf:init` | once, at the start | asks the three questions, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories |
+| `/srf:analyze` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
+| `/srf:release` | after an approval | runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+
+The directory you opened Claude Code in **is** the workspace. Everything the framework
+writes lands inside it; nothing is written into the plugin. `CLAUDE.md`, placed by
+`/srf:init`, carries the framework's rules into every later session in that directory.
 
 ## Layout
 
@@ -19,18 +60,23 @@ file is right.
 ├── AGENTS.md                  # framework rules, and where every other rule lives
 ├── NOTES.md                   # recorded ideas that are deliberately NOT built
 ├── RELEASE_NOTES.md           # what each framework version contains
-├── flag.yml                   # human switches: operating mode, release execution
-├── .env.example               # WORKSPACE_PATH contract
-├── agents/                    # agent definitions
-│   ├── AGENTS.md              # flow, gates, concurrency, file ownership
-│   ├── workspace-init-agent.md
-│   ├── requirement-analysis-agent.md
-│   ├── release-agent.md
+├── .claude-plugin/
+│   ├── plugin.json            # the srf plugin: name and version
+│   └── marketplace.json       # the marketplace that serves it
+├── skills/                    # what the human runs, in their own session
+│   ├── init/SKILL.md          # Workspace Init Agent
+│   ├── analyze/SKILL.md       # Requirement Analysis Agent
+│   └── release/SKILL.md       # Release Agent
+├── agents/                    # subagents the Release Agent spawns
 │   ├── coding-agent.md
 │   └── journey-test-agent.md
+├── hooks/
+│   ├── hooks.json             # PreToolUse: the framework is read-only
+│   └── guard-framework.js
 ├── knowledge/
+│   ├── flow/                  # flow, gates, concurrency, file ownership, where the files are
 │   ├── tech-stack.yaml        # fixed languages, frameworks, libraries, exact versions
-│   ├── workspace/             # workspace manifest schema and template
+│   ├── workspace/             # workspace manifest schema, manifest and CLAUDE.md templates
 │   ├── requirement/           # release and screen spec templates, locking rules
 │   ├── questions/             # the one shape every question to the human takes
 │   ├── auth/                  # login patterns, provider setup, token and key rules
@@ -50,65 +96,55 @@ file is right.
 │   └── java-spring-boot/      # backend project structure reference
 └── preflight/
     ├── checker.sh             # is this machine ready to develop
-    ├── mode-guard.sh          # is the framework writable
+    ├── checker.bat            # the same check, for Windows
     ├── done-check.sh          # does a release deploy and run
     └── journey-check.sh       # did its required journeys pass, and is the test zone gone
 ```
 
-## Getting started
+## The one switch
 
-```bash
-cp .env.example .env
-# set WORKSPACE_PATH to the workspace you want to build in
-./preflight/checker.sh
-```
+`release_execution` lives in the workspace's `workspace.yaml` and only you change it.
 
-`checker.sh` must pass before anything else: it verifies Java 25, Node.js 24 with
-npm, Docker and Python 3.13.
+| Value | Meaning |
+|---|---|
+| `manual` | Stop after each release locks. You click through the running system and run `/srf:release` again. |
+| `auto` | Continue to the next `draft` release until none is left. |
 
-## The two switches
-
-Both live in `flag.yml` and only the human changes them.
-
-| Switch | Values | Meaning |
-|---|---|---|
-| `mode` | `working` / `edit` | `working` locks this repository against all agent writes. `edit` opens it for the framework author. |
-| `release_execution` | `manual` / `auto` | `manual` stops after each release for the human to click through. `auto` continues to the next release. |
-
-Keep `mode: working` whenever agents are building a system. Switch to `edit` only
-to change the framework itself.
+`/srf:init` writes `manual`. The framework itself has no switch any more: it is
+read-only wherever it is installed, enforced by the plugin's own hook, and it is edited
+only in this repository.
 
 ## How a build runs
 
 ```text
-Workspace Init Agent        --->  phase 1 repositories, three questions
+/srf:init                   --->  phase 1 repositories, three questions
       |
 raw requirement (any language)
       |
       v
-Requirement Analysis Agent  --->  human approves      <- the only gate
+/srf:analyze                --->  human approves      <- the only gate
       |
       v
-Release Agent               --->  creates phase 2 repositories, starts the release
+/srf:release                --->  creates phase 2 repositories, starts the release
       |
       v
-Coding Agent x N            --->  one per repository, in parallel
+coding-agent x N            --->  one per repository, in parallel
       |
       v
-Release Agent               --->  deploys, done-check.sh
+/srf:release                --->  deploys, done-check.sh
       |
       v
-Journey Test Agent          --->  journeys executed in a test zone
+journey-test-agent          --->  journeys executed in a test zone
       |                           failed -> rework, at most 3 rounds, then you decide
       v
 all required journeys pass  --->  journey-check.sh
       |
       v
-Release Agent               --->  release locked     <- the only other check
+/srf:release                --->  release locked     <- the only other check
 ```
 
 The full flow, the two checkpoints and why there is no QA or reviewer agent are in
-`agents/AGENTS.md`.
+`knowledge/flow/AGENTS.md`.
 
 ## What you will be asked
 
@@ -120,3 +156,10 @@ yours — a login method, a provider setup, what to do when journey rework runs 
 
 `NOTES.md` holds ideas that were recorded and deliberately not built; no agent works
 from it.
+
+## Developing the framework
+
+Open Claude Code in this repository to change the framework; the guard hook recognizes
+that case. Validate with `claude plugin validate .`, and try a change from an empty
+scratch directory with `claude --plugin-dir <path to this repository>` before bumping
+the version in `.claude-plugin/` and tagging. `AGENTS.md` has the rest.

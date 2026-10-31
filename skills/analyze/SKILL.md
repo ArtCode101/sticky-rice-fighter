@@ -1,3 +1,9 @@
+---
+name: analyze
+description: Turn a raw requirement, in any language, into releases and screen specifications in the requirement repository, append the phase 2 repositories to workspace.yaml, and stop for the human's approval. Use when the human gives a requirement for this workspace.
+argument-hint: "<the requirement, or a path to it>"
+---
+
 # Requirement Analysis Agent
 
 ## Role
@@ -9,7 +15,7 @@ design.
 This is the **only** agent whose output requires human approval. It is the single
 human gate in the framework. Everything after it runs without human gates; the only
 other check is the mechanical definition of done of each release — deployed, and its
-required journeys passed — in `agents/AGENTS.md`.
+required journeys passed — in `knowledge/flow/AGENTS.md`.
 
 This agent does not write product code.
 
@@ -19,7 +25,7 @@ This agent does not write product code.
 |---|---|
 | Raw requirement | The human. Plain text, semi-technical or fully technical. Any language. |
 | Mockups | Optional, from the human. |
-| `WORKSPACE_PATH` | `.env` in the framework repository |
+| `WORKSPACE_PATH` | the directory Claude Code was opened in, `${CLAUDE_PROJECT_DIR}` |
 | Fixed tech stack | `knowledge/tech-stack.yaml` |
 | Requirement rules and templates | `knowledge/requirement/AGENTS.md` |
 | Manifest rules | `knowledge/workspace/AGENTS.md` |
@@ -29,7 +35,18 @@ This agent does not write product code.
 | Login methods and provider setup | `knowledge/auth/AGENTS.md` |
 | Mobile rules | `knowledge/mobile/AGENTS.md` |
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
-| Flow and ownership | `agents/AGENTS.md` |
+| Flow and ownership | `knowledge/flow/AGENTS.md` |
+
+## Where the files are
+
+- **The framework is this plugin**, at `${CLAUDE_PLUGIN_ROOT}`. Every `knowledge/...`,
+  `preflight/...` and `agents/...` path here and in the knowledge files is relative to
+  it. Read `knowledge/flow/AGENTS.md` first; the rule behind this section is there.
+- **The workspace is the directory Claude Code was opened in**, `${CLAUDE_PROJECT_DIR}`.
+  That is `WORKSPACE_PATH`, and every `${WORKSPACE_PATH}` path means this directory.
+  There is no `.env`.
+- **The framework is read-only.** A hook blocks every write under
+  `${CLAUDE_PLUGIN_ROOT}`. A blocked write is reported to the human, never worked around.
 
 ## Procedure
 
@@ -116,7 +133,7 @@ Each screen file must state:
 The human reviews the release breakdown and the screen specifications and either
 approves or asks for changes. While a release is `draft`, this agent may edit it
 freely in place. Nothing downstream starts until the human approves; then the Release
-Agent takes over (`agents/release-agent.md`).
+Agent takes over (`skills/release/SKILL.md`).
 
 ## Must not
 
@@ -136,7 +153,7 @@ Agent takes over (`agents/release-agent.md`).
 - Add push notifications to a project that did not ask for them.
 - Ask more than one question at a time, or send a list of questions for the human to
   work through. One at a time, in the shape `knowledge/questions/AGENTS.md` defines.
-- Write any file inside the framework repository.
+- Write any file inside the framework, `${CLAUDE_PLUGIN_ROOT}`.
 - Start a coding agent or continue past the human gate on its own.
 
 ## Definition of done

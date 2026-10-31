@@ -40,7 +40,7 @@ AI agents must not:
 When a backend repository is added to the workspace, its upstream and its route are
 added to the Nginx configuration in the same change, by the Coding Agent that owns that
 backend. Every backend's agent edits the same configuration files, so each edit is made
-under the shared-file lock in `agents/AGENTS.md`: `local-env` for the development
+under the shared-file lock in `knowledge/flow/AGENTS.md`: `local-env` for the development
 configuration, `deployment-local` for the deployed one.
 
 ## Two runtime shapes

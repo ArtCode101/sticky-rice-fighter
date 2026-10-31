@@ -71,8 +71,18 @@ fi
 
 # 4. Python 3.13 (fixed version, used for Playwright and tooling)
 REQUIRED_PYTHON="3.13"
-if command -v python3 >/dev/null 2>&1; then
-    PYTHON_VERSION_RAW="$(python3 --version 2>&1)"
+# Pick the first Python that actually runs. On Windows, `python3` is often the
+# Microsoft Store alias: it is on PATH but prints nothing, and the real interpreter is
+# `python`.
+PYTHON=""
+for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 && [ -n "$("$candidate" --version 2>&1)" ]; then
+        PYTHON="$candidate"
+        break
+    fi
+done
+if [ -n "$PYTHON" ]; then
+    PYTHON_VERSION_RAW="$($PYTHON --version 2>&1)"
     PYTHON_MINOR_VERSION="$(echo "$PYTHON_VERSION_RAW" | sed -E 's/^Python ([0-9]+\.[0-9]+).*/\1/')"
     if [ "$PYTHON_MINOR_VERSION" = "$REQUIRED_PYTHON" ]; then
         pass "Python $REQUIRED_PYTHON detected ($PYTHON_VERSION_RAW)"

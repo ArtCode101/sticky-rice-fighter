@@ -44,7 +44,7 @@ So the required journeys of a release are part of its definition of done:
   follow a failed run. If the journeys still fail after round 3, the loop **stops** and
   the human is asked what happens next (see **When the rounds run out**).
 
-The bound is what keeps this on the right side of the rule in `agents/AGENTS.md`. A
+The bound is what keeps this on the right side of the rule in `knowledge/flow/AGENTS.md`. A
 gate that waits for journeys to pass, with no limit, is a loop with no end. A gate with a
 fixed number of rounds and a human at the end of it is not.
 
@@ -266,7 +266,7 @@ Release <n>: <k> required journeys still fail after 3 rework rounds. What now?
 
 This question has **no recommended option**, so it is asked even when
 `workspace.auto_recommend` is `true`, and it stops the run even when
-`release_execution` is `auto`.
+`workspace.release_execution` is `auto`.
 
 Every answer is recorded in the run report, in two places: the answer's key appended to
 `human_decisions` in the front matter, and the human's own words, quoted, under

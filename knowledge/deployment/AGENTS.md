@@ -17,7 +17,7 @@ from the workspace's `config` repository at deploy time.
 It is created empty in phase 1 and filled in as releases need it.
 
 Every Coding Agent adds its own service to `local/`, so `local/` is a shared directory:
-it is written only under the `deployment-local` lock in `agents/AGENTS.md`. Only the
+it is written only under the `deployment-local` lock in `knowledge/flow/AGENTS.md`. Only the
 Release Agent runs `local/deploy.sh`.
 
 ## Layout

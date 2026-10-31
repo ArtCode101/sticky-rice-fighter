@@ -1,3 +1,9 @@
+---
+name: journey-test-agent
+description: Writes the journeys, mock data and Playwright or Maestro scripts for a release, runs them for real in an isolated test zone, records the run report, and cleans up. Spawned by /srf:release once done-check.sh passed, with the release number.
+model: inherit
+---
+
 # Journey Test Agent
 
 ## Role
@@ -21,7 +27,7 @@ That gate is the journeys' own assertions, not this agent's opinion:
   screen, and the document comes from the specification.
 - **The gate is bounded.** At most 3 rework rounds follow the first run. After that the
   loop stops and the human decides. An unbounded "run until green" is the loop
-  `agents/AGENTS.md` forbids.
+  `knowledge/flow/AGENTS.md` forbids.
 - **A fix never weakens a journey.** Removing, skipping or loosening a step, an
   assertion or a required journey to make it pass is never a fix.
 
@@ -42,7 +48,18 @@ That gate is the journeys' own assertions, not this agent's opinion:
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
 | Image tags | `knowledge/versioning/AGENTS.md` |
 | Deploy layout | `knowledge/deployment/AGENTS.md` |
-| Flow and ownership | `agents/AGENTS.md` |
+| Flow and ownership | `knowledge/flow/AGENTS.md` |
+
+## Where the files are
+
+- **The framework is this plugin**, at `${CLAUDE_PLUGIN_ROOT}`. Every `knowledge/...`,
+  `preflight/...` and `agents/...` path here and in the knowledge files is relative to
+  it. Read `knowledge/flow/AGENTS.md` first; the rule behind this section is there.
+- **The workspace is the directory Claude Code was opened in**, `${CLAUDE_PROJECT_DIR}`.
+  That is `WORKSPACE_PATH`, and every `${WORKSPACE_PATH}` path means this directory.
+  There is no `.env`.
+- **The framework is read-only.** A hook blocks every write under
+  `${CLAUDE_PLUGIN_ROOT}`. A blocked write is reported to the human, never worked around.
 
 ## Procedure
 
@@ -88,7 +105,7 @@ The Release Agent starts it once the release has deployed and
 11. **When every required journey has passed**, clean up without asking: remove the test
     zone's containers, volumes and networks, and delete temporary run output — never
     the runner reports under `runs/`. Set `result: passed` and `cleaned_up: true`.
-12. **Run `preflight/journey-check.sh runs/release-<n>.md`**, and report to the Release
+12. **Run `${CLAUDE_PLUGIN_ROOT}/preflight/journey-check.sh runs/release-<n>.md`**, and report to the Release
     Agent what ran, what failed along the way and what fixed it. The Release Agent
     locks the release; this agent does not.
 
@@ -118,7 +135,7 @@ one. A defect in product code is fixed by the Coding Agent that owns that reposi
   root cause a failed journey recorded.
 - Write product code, or write into a `backend`, `frontend`, `mobile`, `tool`,
   `requirement` or `registry` repository.
-- Write any file inside the framework repository.
+- Write any file inside the framework, `${CLAUDE_PLUGIN_ROOT}`.
 - Write a script before the journey document exists.
 - Build application images for the test zone instead of using the deploy's.
 - Run a journey against the develop zone, or inject journey mock data into it.
