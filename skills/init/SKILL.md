@@ -39,9 +39,10 @@ This agent does not analyze requirements and does not write product code.
 
 1. `WORKSPACE_PATH` is `${CLAUDE_PROJECT_DIR}`. Stop and report if it already holds a
    `workspace.yaml`: that workspace is initialized, and this skill runs once.
-2. Run `${CLAUDE_PLUGIN_ROOT}/preflight/checker.sh`, or
-   `${CLAUDE_PLUGIN_ROOT}\preflight\checker.bat` on Windows. Stop and report if the
-   machine is not ready.
+2. Run `bash "${CLAUDE_PLUGIN_ROOT}/preflight/checker.sh"` with the Bash tool. On
+   Windows that is Git Bash, and the script finds the real Python there. Only when no
+   Bash tool exists, run `${CLAUDE_PLUGIN_ROOT}/preflight/checker.bat` instead. Stop
+   and report if the machine is not ready.
 3. Take the workspace name from the directory's name, unless the human gives another.
 4. **Ask the human the three questions below**, one at a time, and record the answers.
    Ask them before writing the manifest, because all three answers go into it.

@@ -3,8 +3,9 @@
 // installed.
 //
 // Blocks Edit, Write and NotebookEdit when the target file lies inside the plugin
-// root (the framework), unless that root is also the project Claude Code was opened
-// in - which is the framework author editing the framework itself.
+// root (the framework), unless Claude Code was opened in the framework itself or a
+// folder inside it - which is the framework author. A project that merely contains the
+// framework, such as its parent folder, gets no exception.
 //
 // Exit codes, per the Claude Code hooks contract:
 //   0 - not a framework file: the call continues through normal permissions
@@ -43,7 +44,7 @@ process.stdin.on("end", () => {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || cwd;
 
   // The framework author, working in the framework repository itself.
-  if (isInside(frameworkRoot, projectDir)) process.exit(0);
+  if (isInside(projectDir, frameworkRoot)) process.exit(0);
 
   if (isInside(target, frameworkRoot)) {
     process.stderr.write(

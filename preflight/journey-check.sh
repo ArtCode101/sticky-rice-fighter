@@ -48,8 +48,18 @@ if [ ! -f "$REPORT" ]; then
     exit 1
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-    printf "${RED}[FAIL]${NC} python3 is required (see preflight/checker.sh)\n"
+# Pick the first Python that actually runs. On Windows, `python3` is often the
+# Microsoft Store alias: it is on PATH but prints nothing, and the real interpreter is
+# `python`.
+PYTHON=""
+for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 && [ -n "$("$candidate" --version 2>&1)" ]; then
+        PYTHON="$candidate"
+        break
+    fi
+done
+if [ -z "$PYTHON" ]; then
+    printf "${RED}[FAIL]${NC} Python 3 is required (see preflight/checker.sh)\n"
     exit 1
 fi
 
@@ -192,7 +202,7 @@ else:
 print("\n".join(out))
 print("PROJECT " + scalars.get("test_project", ""))
 PY
-CHECKS="$(python3 -c "$CHECK_SCRIPT" "$REPORT")"
+CHECKS="$("$PYTHON" -c "$CHECK_SCRIPT" "$REPORT")"
 
 PROJECT=""
 while IFS= read -r line; do
