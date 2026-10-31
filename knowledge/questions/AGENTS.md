@@ -45,6 +45,44 @@ Rules:
 - **Mark the recommended option** when there is a clear best one, and only then. See
   **Recommendations** below.
 
+## Read before asking
+
+A question is asked only when the human has not already answered it. Before asking
+anything, the agent reads what the human has already given it: a requirement file
+passed on the command line, a requirement in the workspace, a mockup. If the answer is
+**stated** there, the agent records it as the human's answer and does not ask.
+
+The test is *stated*, not *implied*:
+
+| What the material says | What the agent does |
+|---|---|
+| "The system needs an MCP server so our support bot can drive it." | `mcp_server: true`, no question. |
+| "Everything in one git repository." | `repo_layout: mono`, no question. |
+| "Users sign in with Google." | login method Google, no question. |
+| Nothing about an MCP server | ask. |
+| "There may be an AI integration later." | ask. Later is not an answer. |
+| A diagram that happens to show one repository | ask. A picture of a layout is not a decision about git. |
+
+Rules:
+
+- **An explicit statement is an answer.** It has the same standing as the human typing
+  it in reply to the question. It is recorded the same way, in the same file, and the
+  agent says in its report which answers came from the material and where.
+- **Anything less is not an answer.** A hint, a default the agent would pick, something
+  the agent would recommend, a statement that contradicts itself: ask. Reading before
+  asking removes questions whose answer is already written down; it never becomes a way
+  to skip a question.
+- **The material does not replace the question's format.** When the agent does ask, it
+  asks in the shape above, whatever the material looked like.
+- **This holds in both modes.** `auto_recommend` below decides what happens to a
+  question that has a recommended option. A question already answered in the material
+  is not asked in either mode, and a question the material does not answer follows the
+  mode's own rule.
+
+Where a skill names a question in its definition, that skill says which file the
+answer lands in. The Workspace Init Agent's three questions land in `workspace.yaml`;
+the Requirement Analysis Agent's land in the release specifications.
+
 ## One decision at a time
 
 **Ask one question. Wait for the answer. Then ask the next.**
@@ -108,6 +146,8 @@ already allowed to do.
 ## Must not
 
 - Ask more than one question at a time.
+- Ask a question the human has already answered in the material they gave, or treat a
+  hint in that material as an answer. See **Read before asking**.
 - Omit the free-text option.
 - Mark more than one option as recommended.
 - Apply a recommendation in `auto_recommend: false`.

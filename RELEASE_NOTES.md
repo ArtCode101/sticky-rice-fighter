@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Preflight on its own, and questions the requirement already answers
+
+- **New: `/srf:preflight`** (`skills/preflight/SKILL.md`). When the framework was a
+  checkout, `./preflight/checker.sh` could be run by hand; as a plugin there was no way
+  to run the readiness check without starting `/srf:init`. The skill runs
+  `preflight/checker.sh` (`checker.bat` on Windows), shows the output and gives the
+  verdict from the exit code. It writes nothing, asks nothing and installs nothing.
+- **New: `npx sticky-rice-fighter preflight`.** The same check from a terminal. The
+  installer finds the installed plugin through Claude Code's
+  `plugins/installed_plugins.json` and runs its checker; it says so when the plugin is
+  not installed yet.
+- **Read before asking** (`knowledge/questions/AGENTS.md`). Before any question, an
+  agent reads what the human already gave it. A question the material answers
+  **outright** is not asked: the answer is recorded as the human's, and the report says
+  where it came from. A hint, a default or an inference is not an answer, and that
+  question is still asked. This holds in both `auto_recommend` modes.
+- **`/srf:init [requirement file]`.** The skill takes a path, reads the file before the
+  three questions, and asks only the ones it does not state — "one repository",
+  "needs an MCP server", "agents may decide on their own" count; a diagram or "maybe
+  later" do not. The file is not copied; `/srf:analyze` reads it in place.
+- **`/srf:analyze`** applies the same rule to its own questions: push notifications,
+  the login method and who sets up the provider are asked only when the requirement
+  does not name the answer. Naming a login method is still not assuming one.
+- Plugin version `2.1.0`, in `.claude-plugin/plugin.json`, `marketplace.json` and the
+  npm package.
+
 ### The framework is a plugin, and runs from the workspace
 
 The framework used to be driven from its own checkout: open a terminal there, point

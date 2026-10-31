@@ -25,11 +25,13 @@ claude plugin install srf@sticky-rice-fighter --scope user
 ```
 
 `--scope user` makes the skills available in every directory you open. Later versions
-arrive with `claude plugin update srf@sticky-rice-fighter`.
+arrive with `claude plugin update srf@sticky-rice-fighter`. The same two steps, as one
+command: `npx sticky-rice-fighter` (and `npx sticky-rice-fighter update` later).
 
-The machine needs Java 25, Node.js 24 with npm, Docker and Python 3.13. `/srf:init`
-checks them with `preflight/checker.sh` (`checker.bat` on Windows) before it does
-anything else.
+The machine needs Java 25, Node.js 24 with npm, Docker and Python 3.13. Check it any
+time with `/srf:preflight` inside Claude Code, or `npx sticky-rice-fighter preflight`
+from a terminal; both run `preflight/checker.sh` (`checker.bat` on Windows). `/srf:init`
+runs the same check before it does anything else.
 
 ## Use
 
@@ -45,13 +47,19 @@ Then, inside Claude Code:
 
 | Skill | When | What it does |
 |---|---|---|
-| `/srf:init` | once, at the start | asks the three questions, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories |
-| `/srf:analyze` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
+| `/srf:preflight` | any time | checks that this machine is ready to build, and changes nothing |
+| `/srf:init [requirement file]` | once, at the start | reads the requirement file if given, asks only the questions it does not answer, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories |
+| `/srf:analyze <requirement>` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
 | `/srf:release` | after an approval | runs the next `draft` release until it is deployed, its journeys pass, and it locks |
 
 The directory you opened Claude Code in **is** the workspace. Everything the framework
 writes lands inside it; nothing is written into the plugin. `CLAUDE.md`, placed by
 `/srf:init`, carries the framework's rules into every later session in that directory.
+
+If the requirement is already written down, give its path to both skills:
+`/srf:init requirement.md`, then `/srf:analyze requirement.md`. Anything the file
+states — "one repository", "needs an MCP server", "users sign in with Google" — is
+taken as your answer and not asked again; anything it only hints at is still asked.
 
 ## Layout
 
@@ -63,7 +71,9 @@ writes lands inside it; nothing is written into the plugin. `CLAUDE.md`, placed 
 ├── .claude-plugin/
 │   ├── plugin.json            # the srf plugin: name and version
 │   └── marketplace.json       # the marketplace that serves it
+├── bin/cli.js                 # npx sticky-rice-fighter: install, update, preflight
 ├── skills/                    # what the human runs, in their own session
+│   ├── preflight/SKILL.md     # is this machine ready, on its own
 │   ├── init/SKILL.md          # Workspace Init Agent
 │   ├── analyze/SKILL.md       # Requirement Analysis Agent
 │   └── release/SKILL.md       # Release Agent
@@ -153,6 +163,10 @@ Agents ask one question at a time, as numbered options with a free-text slot las
 multi-repo, whether you want an MCP server, and whether agents may take the option they
 recommend without asking. After that, questions come only when a decision is genuinely
 yours — a login method, a provider setup, what to do when journey rework runs out.
+
+Agents read what you gave them before asking. A question your requirement file already
+answers outright is not asked; the answer is recorded as yours, and the report says
+where it came from. A hint is not an answer, so that question is still asked.
 
 `NOTES.md` holds ideas that were recorded and deliberately not built; no agent works
 from it.

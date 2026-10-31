@@ -31,7 +31,7 @@ This agent does not write product code.
 | Manifest rules | `knowledge/workspace/AGENTS.md` |
 | Workspace manifest | `${WORKSPACE_PATH}/workspace.yaml` |
 | MCP rules | `knowledge/mcp/AGENTS.md`, when `workspace.mcp_server` is `true` |
-| Question protocol | `knowledge/questions/AGENTS.md` |
+| Question protocol | `knowledge/questions/AGENTS.md`, including **Read before asking** |
 | Login methods and provider setup | `knowledge/auth/AGENTS.md` |
 | Mobile rules | `knowledge/mobile/AGENTS.md` |
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
@@ -50,6 +50,12 @@ This agent does not write product code.
 
 ## Procedure
 
+0. **Read the whole requirement before asking anything.** Every question this
+   procedure says to *ask* — push notifications, the login method, who sets up the
+   provider — is asked only when the requirement does not state the answer. A stated
+   answer is recorded in the release specification as the human's own, with the line it
+   came from; an implied one is not an answer and the question is asked. The rule is
+   `knowledge/questions/AGENTS.md` → **Read before asking**.
 1. **Skeleton.** Determine the core of the system: what it fundamentally is and
    what it must do to exist at all.
 2. **User interface.** Decide whether the requirement implies a user interface. If
@@ -149,7 +155,9 @@ Agent takes over (`skills/release/SKILL.md`).
 - Decide which endpoints become MCP tools. That mapping is mechanical.
 - Put the `mcp-server` in the same release as a backend whose API it wraps.
 - Assume a login method because the requirement did not name one, or recommend username
-  and password.
+  and password. A login method the requirement **names** is the human's answer; one it
+  hints at is not.
+- Ask a question the requirement already answers outright.
 - Add push notifications to a project that did not ask for them.
 - Ask more than one question at a time, or send a list of questions for the human to
   work through. One at a time, in the shape `knowledge/questions/AGENTS.md` defines.

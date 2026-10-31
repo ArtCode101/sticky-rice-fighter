@@ -1,6 +1,7 @@
 ---
 name: init
-description: Initialize a greenfield workspace in the directory Claude Code was opened in. Asks the three questions, writes workspace.yaml and CLAUDE.md, creates the phase 1 repositories. Runs once per workspace.
+description: Initialize a greenfield workspace in the directory Claude Code was opened in. Reads the requirement file if one is given, asks only the questions it does not answer, writes workspace.yaml and CLAUDE.md, creates the phase 1 repositories. Runs once per workspace.
+argument-hint: "[path to a requirement file]"
 disable-model-invocation: true
 ---
 
@@ -21,8 +22,9 @@ This agent does not analyze requirements and does not write product code.
 | Manifest template | `knowledge/workspace/templates/workspace.yaml` |
 | Workspace instructions template | `knowledge/workspace/templates/CLAUDE.md` |
 | Manifest schema and rules | `knowledge/workspace/AGENTS.md` |
-| Three answers from the human | Asked at initialization. See **Three questions for the human**. |
-| Question protocol | `knowledge/questions/AGENTS.md` |
+| Requirement file | Optional. The path in `$ARGUMENTS`, in any language. Read **before** the three questions; see **Read the requirement first**. |
+| Three answers from the human | From the requirement file where it states them, otherwise asked. See **Three questions for the human**. |
+| Question protocol | `knowledge/questions/AGENTS.md`, including **Read before asking** |
 
 ## Where the files are
 
@@ -44,18 +46,21 @@ This agent does not analyze requirements and does not write product code.
    Bash tool exists, run `${CLAUDE_PLUGIN_ROOT}/preflight/checker.bat` instead. Stop
    and report if the machine is not ready.
 3. Take the workspace name from the directory's name, unless the human gives another.
-4. **Ask the human the three questions below**, one at a time, and record the answers.
-   Ask them before writing the manifest, because all three answers go into it.
-5. If `${WORKSPACE_PATH}/workspace.yaml` does not exist, copy the template there
+4. **Read the requirement file first**, if `$ARGUMENTS` names one. Note every one of
+   the three questions it answers outright. See **Read the requirement first**.
+5. **Ask the human each of the three questions the file did not answer**, one at a
+   time, and record the answers. Do this before writing the manifest, because all three
+   answers go into it.
+6. If `${WORKSPACE_PATH}/workspace.yaml` does not exist, copy the template there
    and replace the placeholder workspace and repository names with real ones
    derived from the workspace name. Write `repo_layout`, `mcp_server` and
-   `auto_recommend` from the answers to step 4; `release_execution` stays at the
-   template's `manual`, for the human to flip later.
+   `auto_recommend` from the answers gathered in steps 4 and 5; `release_execution`
+   stays at the template's `manual`, for the human to flip later.
    Then copy `knowledge/workspace/templates/CLAUDE.md` to `${WORKSPACE_PATH}/CLAUDE.md`,
    with the workspace name filled in, unless one exists. It is what makes the
    framework's rules apply from the first message of every later session here.
-6. Read `${WORKSPACE_PATH}/workspace.yaml`.
-7. Initialize git according to `workspace.repo_layout`:
+7. Read `${WORKSPACE_PATH}/workspace.yaml`.
+8. Initialize git according to `workspace.repo_layout`:
    - `multi`: for every entry with `phase: 1`, create `${WORKSPACE_PATH}/<name>/`,
      run `git init` in it, and make an initial commit. Phase 1 repositories are
      independent, so they may be created in any order or in parallel.
@@ -63,21 +68,45 @@ This agent does not analyze requirements and does not write product code.
      `${WORKSPACE_PATH}/<name>/` for every entry with `phase: 1` as a directory
      inside it, add `.locks/` to the workspace root's `.gitignore` (see the shared-file
      lock in `knowledge/flow/AGENTS.md`), and make one initial commit covering all of them.
-8. Give each created repository a `README.md` naming the repository and its type.
+9. Give each created repository a `README.md` naming the repository and its type.
    The `deployment` and `config` repositories stay otherwise empty: their scripts
    and configuration are added later, not here.
-9. Write the repository index into the `registry` repository: every repository
-   name from the manifest with its type. Names only, never a local host path.
-   Leave `remote` empty when the manifest has none.
-10. Report what was created, including which layout was chosen and whether an MCP
-    server was asked for.
+10. Write the repository index into the `registry` repository: every repository
+    name from the manifest with its type. Names only, never a local host path.
+    Leave `remote` empty when the manifest has none.
+11. Report what was created, including which layout was chosen and whether an MCP
+    server was asked for, and for each of the three answers whether it came from the
+    requirement file or from the human's reply. When a requirement file was read, end
+    by telling the human the next step is `/srf:analyze <the same path>`.
+
+## Read the requirement first
+
+The human often has the requirement written down before the workspace exists. When
+`/srf:init` is given its path, that file is read **before** any question is asked, and
+a question whose answer is stated in it is not asked. The rule, with the line between
+*stated* and *implied*, is `knowledge/questions/AGENTS.md` → **Read before asking**;
+this section applies it to the three questions:
+
+| Question | Counts as an answer | Does not |
+|---|---|---|
+| 1. Layout | "one repository", "monorepo", "a repository per service", "multi-repo" | a diagram, a folder listing, nothing said |
+| 2. MCP server | "needs an MCP server", "an AI agent must be able to drive it", "no MCP server" | "AI features", "a chatbot in the UI", "maybe later" |
+| 3. Auto-recommend | "agents may decide on their own when one option is clearly best", "ask me every decision" | the human being busy, the human writing tersely |
+
+An answer taken from the file is written to the manifest exactly as a typed answer
+would be, and the report names the line it came from. Anything the file does not state
+is asked, one question at a time, in the usual shape. The file is **not** copied
+anywhere by this skill: `/srf:analyze` reads it for the analysis.
+
+Without a path in `$ARGUMENTS`, all three questions are asked.
 
 ## Three questions for the human
 
-All three are asked **every time** a workspace is initialized, and all three answers are
-written into the manifest so no agent ever asks again.
+All three are answered **every time** a workspace is initialized — from the requirement
+file where it states the answer, otherwise by asking — and all three answers are written
+into the manifest so no agent ever asks again.
 
-They are asked **one at a time**, in the numbered-option shape
+When asked, they are asked **one at a time**, in the numbered-option shape
 `knowledge/questions/AGENTS.md` defines — including question 3, which is the one that
 decides whether later questions get asked at all. Question 3 is never auto-answered by
 the mode it is establishing.
@@ -152,9 +181,12 @@ anything. The framework still has exactly the two checkpoints in `knowledge/flow
 - Create any `phase: 2` repository. The Release Agent creates them once the requirement
   analysis is approved.
 - Skip any of the three questions, or answer one on the human's behalf before they have
-  had the chance to.
+  had the chance to. An answer **stated** in the requirement file is the human's own
+  answer; an inference from it is not, and the question is asked.
+- Ask a question the requirement file already answers outright.
 - Ask the three questions in one message. One at a time.
 - Apply `auto_recommend` to question 3 itself.
+- Copy or move the requirement file. `/srf:analyze` reads it where it is.
 - Change `repo_layout`, `mcp_server` or `auto_recommend` once they are written. Only the
   human revisits those; the single exception is in `skills/release/SKILL.md`.
 - Write any file inside the framework, `${CLAUDE_PLUGIN_ROOT}`.
@@ -167,4 +199,5 @@ anything. The framework still has exactly the two checkpoints in `knowledge/flow
 Every phase 1 repository exists under `WORKSPACE_PATH` with an initial commit — as
 its own git repository in `multi` layout, or as a directory in the workspace's single
 git repository in `mono` layout — the registry lists all of them with their types, and
-the manifest records all three answers from the human.
+the manifest records all three answers: each one stated in the requirement file or
+given by the human in reply, and the report says which.

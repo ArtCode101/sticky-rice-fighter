@@ -74,11 +74,12 @@ When a rule changes, it changes there.
 |---|---|---|
 | Agents, flow, gates, places | Two checkpoints: the human approves the analysis; a release is done when `done-check.sh` and `journey-check.sh` pass. No QA or reviewer agent. The framework is `${CLAUDE_PLUGIN_ROOT}`, the workspace is `${CLAUDE_PROJECT_DIR}`. | `knowledge/flow/AGENTS.md` |
 | File ownership | No two agents write the same file at the same time; shared workspace files are written under a lock. | `knowledge/flow/AGENTS.md` |
-| Initializing a workspace | `/srf:init` asks the three questions, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories. | `skills/init/SKILL.md` |
+| Machine readiness | `/srf:preflight`, or `npx sticky-rice-fighter preflight`, runs `preflight/checker.sh` (`checker.bat` on Windows) and changes nothing. | `skills/preflight/SKILL.md` |
+| Initializing a workspace | `/srf:init [requirement file]` reads the file first, asks the three questions it does not answer, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories. | `skills/init/SKILL.md` |
 | Analyzing a requirement | `/srf:analyze` writes releases and screens, and stops for the human's approval. | `skills/analyze/SKILL.md` |
 | Running releases | `/srf:release` creates phase 2 repositories, starts, deploys and locks each release. | `skills/release/SKILL.md` |
 | Release execution | `workspace.release_execution`: `manual` stops after each lock, `auto` continues. Only the human changes it. | `knowledge/workspace/AGENTS.md` |
-| Asking the human | One question at a time, numbered options, a free-text slot last; `auto_recommend` never skips a question with no recommendation. | `knowledge/questions/AGENTS.md` |
+| Asking the human | Read what the human gave before asking: a stated answer is not asked again, a hint is. One question at a time, numbered options, a free-text slot last; `auto_recommend` never skips a question with no recommendation. | `knowledge/questions/AGENTS.md` |
 | Datastore access | PostgreSQL, Kafka and Redis only through the Python tools in the `tool` repository, local hosts only, full privileges there. | `knowledge/tools/AGENTS.md` |
 | Backend traffic | Every caller reaches the backend through Nginx only, in development and deployed; every workspace with a backend has Nginx. | `knowledge/nginx/AGENTS.md` |
 | MCP servers | Built only when the human asked; generated mechanically from the backends' OpenAPI documents, in its own release; never touches a datastore. | `knowledge/mcp/AGENTS.md` |

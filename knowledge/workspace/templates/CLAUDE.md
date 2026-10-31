@@ -8,8 +8,9 @@ framework itself lives in the plugin and is never edited from here.
 
 | Skill | When | What it does |
 |---|---|---|
-| `/srf:init` | once, at the start | asks the three questions, writes `workspace.yaml`, creates the phase 1 repositories |
-| `/srf:analyze` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
+| `/srf:preflight` | any time | checks that this machine is ready to build, and changes nothing |
+| `/srf:init [requirement file]` | once, at the start | reads the requirement file if given, asks only the questions it does not answer, writes `workspace.yaml`, creates the phase 1 repositories |
+| `/srf:analyze <requirement>` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
 | `/srf:release` | after an approval | runs the next `draft` release until it is deployed, its journeys pass, and it locks |
 
 Raw requirements may be written in any language. Everything the framework produces
@@ -28,7 +29,9 @@ exists so the rules apply from the first message of every session.
   `mkdir` lock in `.locks/`.
 - **Two checkpoints only.** You approve the requirement analysis; a release locks when
   `done-check.sh` and `journey-check.sh` pass. No agent reviews another's work.
-- **Questions come one at a time**, as numbered options with a free-text slot last.
+- **Questions come one at a time**, as numbered options with a free-text slot last,
+  and only for what you have not already written down: a stated answer in your
+  requirement is taken as yours, a hint is still asked.
 - **`workspace.yaml` is the memory.** `repo_layout`, `mcp_server`, `auto_recommend` and
   `release_execution` are read from it, never asked again. `release_execution` is
   yours to flip between `manual` and `auto`.

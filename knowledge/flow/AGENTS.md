@@ -14,6 +14,7 @@ files summarize these rules in a line and link here.
 
 | Agent | Definition | Runs as | Human gate |
 |---|---|---|---|
+| Preflight | `skills/preflight/SKILL.md` | `/srf:preflight`, in the human's session | no |
 | Workspace Init Agent | `skills/init/SKILL.md` | `/srf:init`, in the human's session | no |
 | Requirement Analysis Agent | `skills/analyze/SKILL.md` | `/srf:analyze`, in the human's session | **yes** |
 | Release Agent | `skills/release/SKILL.md` | `/srf:release`, in the human's session | no |
@@ -22,7 +23,8 @@ files summarize these rules in a line and link here.
 
 The three that talk to the human run in the human's own session, because they ask
 questions and wait for answers. The two that only build run as subagents, so several
-can run in parallel.
+can run in parallel. Preflight is not an agent: it runs the machine readiness check
+`/srf:init` also runs, on its own, and changes nothing.
 
 There is deliberately no QA agent and no reviewer agent. Adding one reintroduces
 the loop this framework exists to avoid.
@@ -104,7 +106,9 @@ The three questions the Workspace Init Agent asks the human — monorepo or mult
 whether they want an MCP server, and whether agents may take the recommended option —
 are **inputs, not gates**, like every other question in
 `knowledge/questions/AGENTS.md`. Nothing is being approved and no work is held back
-pending a verdict. Do not turn any question into a checkpoint.
+pending a verdict. Do not turn any question into a checkpoint. A question the human's
+requirement file already answers outright is not asked at all; that rule is
+**Read before asking** in the same file.
 
 No agent has its own completion gate. No agent judges whether its own work is good
 enough. Any rule of the form "prove this is complete before continuing" is what
