@@ -6,7 +6,7 @@ runs on a local Docker host and a real user's journeys through it have been exec
 and passed.
 
 It is packaged as a **Claude Code plugin** named `srf`. You install it once, open
-Claude Code in the directory you want to build in, and drive it with three skills.
+Claude Code in the directory you want to build in, and drive it with a handful of skills.
 This repository is the framework: knowledge, rules, skills and subagent definitions.
 No product code is ever written here.
 
@@ -16,6 +16,28 @@ file is right.
 
 ## Install
 
+### Requirements
+
+| Needed | Why |
+|---|---|
+| [Claude Code](https://claude.com/claude-code) | the framework runs as a Claude Code plugin |
+| Node.js 18 or newer with npm | only for the `npx` install; the manual install does not need it |
+| Java 25, Node.js 24 with npm, Docker, Python 3.13 | what the systems the framework builds need; `/srf:preflight` checks them, and `/srf:init` runs the same check before it does anything else |
+
+### Option 1: one command with npx (recommended)
+
+```bash
+npx sticky-rice-fighter
+```
+
+This adds the marketplace and installs the `srf` plugin at user scope, so the skills are
+available in every directory you open. It needs nothing cloned and nothing configured.
+
+### Option 2: manual install
+
+The same two steps, run by hand. Use this if you cannot run `npx` or want to see each
+step.
+
 ```bash
 claude plugin marketplace add ArtCode101/sticky-rice-fighter
 ```
@@ -24,26 +46,92 @@ claude plugin marketplace add ArtCode101/sticky-rice-fighter
 claude plugin install srf@sticky-rice-fighter --scope user
 ```
 
-`--scope user` makes the skills available in every directory you open. Later versions
-arrive with `claude plugin update srf@sticky-rice-fighter`. The same two steps, as one
-command: `npx sticky-rice-fighter` (and `npx sticky-rice-fighter update` later).
+`--scope user` makes the skills available in every directory you open. Use
+`--scope project` to install it for one project only.
 
-The machine needs Java 25, Node.js 24 with npm, Docker and Python 3.13. Check it any
-time with `/srf:preflight` inside Claude Code, or `npx sticky-rice-fighter preflight`
-from a terminal; both run `preflight/checker.sh` (`checker.bat` on Windows). `/srf:init`
-runs the same check before it does anything else.
+### Check the machine
+
+```bash
+npx sticky-rice-fighter preflight
+```
+
+or `/srf:preflight` inside Claude Code. Both run `preflight/checker.sh` (`checker.bat`
+on Windows) and change nothing; `/srf:init` runs the same check before it does anything
+else.
+
+### Check the install
+
+```bash
+claude plugin list
+```
+
+`srf@sticky-rice-fighter` should be listed as enabled. Inside Claude Code, typing `/srf:`
+should offer `preflight`, `init`, `analyze`, `release` and `journey-mode`.
+
+### Update
+
+```bash
+npx sticky-rice-fighter update
+```
+
+or, by hand:
+
+```bash
+claude plugin update srf@sticky-rice-fighter
+```
+
+Restart Claude Code afterwards so the new version loads.
+
+### Uninstall
+
+```bash
+claude plugin uninstall srf@sticky-rice-fighter
+```
+
+```bash
+claude plugin marketplace remove sticky-rice-fighter
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Claude Code was not found on PATH` | install Claude Code, then open a new terminal and run the command again |
+| `/srf:` offers nothing | run `claude plugin list`; if `srf` is missing or disabled, install or enable it, then restart Claude Code |
+| An old version keeps loading | run the update command above and restart Claude Code |
 
 ## Use
 
-```bash
-mkdir my-workspace && cd my-workspace
-```
+### Step by step
 
-```bash
-claude
-```
+1. Make an empty directory for the system you want to build. This directory **is** the
+   workspace; everything the framework writes lands inside it.
 
-Then, inside Claude Code:
+   ```bash
+   mkdir my-workspace && cd my-workspace
+   ```
+
+2. Open Claude Code in it.
+
+   ```bash
+   claude
+   ```
+
+3. Run `/srf:init` once. It checks the machine, asks the three questions, writes
+   `workspace.yaml` and `CLAUDE.md`, and creates the phase 1 repositories.
+4. Describe what you want built, in any language, and run `/srf:analyze`. Read the
+   releases and screen specifications it produces, then approve them. This is the only
+   gate.
+5. Run `/srf:release`. It first asks whether the journeys run in desktop or background
+   mode, then builds, deploys and tests the next `draft` release, and locks it. With
+   `release_execution: manual` (the default), run `/srf:release` again for each
+   following release; with `auto` it continues on its own.
+6. For a new requirement later, open Claude Code in the same directory and start again
+   from step 4.
+
+### The skills
+
+Inside Claude Code:
 
 | Skill | When | What it does |
 |---|---|---|
