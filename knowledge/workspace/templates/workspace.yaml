@@ -36,6 +36,12 @@ workspace:
   # is left. Only the human changes this, by editing this file.
   release_execution: manual
 
+  # How the journey tests run. "desktop" = a visible browser or emulator, "background"
+  # = headless, "ask" = /srf:release asks before it starts, and the answer lasts for
+  # that run. Only the human changes this, with /srf:journey-mode or by editing this
+  # file. A journey that needs a human to click always runs in desktop mode.
+  journey_mode: ask
+
 repos:
   # --- Phase 1: no dependencies, created immediately -----------------------
   - name: my-workspace-registry

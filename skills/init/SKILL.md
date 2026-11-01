@@ -55,7 +55,8 @@ This agent does not analyze requirements and does not write product code.
    and replace the placeholder workspace and repository names with real ones
    derived from the workspace name. Write `repo_layout`, `mcp_server` and
    `auto_recommend` from the answers gathered in steps 4 and 5; `release_execution`
-   stays at the template's `manual`, for the human to flip later.
+   stays at the template's `manual` and `journey_mode` at its `ask`, for the human to
+   change later.
    Then copy `knowledge/workspace/templates/CLAUDE.md` to `${WORKSPACE_PATH}/CLAUDE.md`,
    with the workspace name filled in, unless one exists. It is what makes the
    framework's rules apply from the first message of every later session here.
@@ -169,7 +170,7 @@ anything. The framework still has exactly the two checkpoints in `knowledge/flow
 ## Outputs
 
 - `${WORKSPACE_PATH}/workspace.yaml`, with `repo_layout`, `mcp_server` and
-  `auto_recommend` filled in, and `release_execution: manual`
+  `auto_recommend` filled in, `release_execution: manual` and `journey_mode: ask`
 - `${WORKSPACE_PATH}/CLAUDE.md`, from the template
 - Git initialized according to `repo_layout`: one repository per phase 1 manifest
   entry in `multi`, or a single repository at the workspace root in `mono`, with an

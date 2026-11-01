@@ -50,7 +50,8 @@ Then, inside Claude Code:
 | `/srf:preflight` | any time | checks that this machine is ready to build, and changes nothing |
 | `/srf:init [requirement file]` | once, at the start | reads the requirement file if given, asks only the questions it does not answer, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories |
 | `/srf:analyze <requirement>` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
-| `/srf:release` | after an approval | runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+| `/srf:release` | after an approval | asks desktop or background mode for the journeys, then runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+| `/srf:journey-mode [desktop \| background \| ask]` | any time | sets how journeys run: a visible browser, headless, or ask at every `/srf:release` |
 
 The directory you opened Claude Code in **is** the workspace. Everything the framework
 writes lands inside it; nothing is written into the plugin. `CLAUDE.md`, placed by
@@ -74,6 +75,7 @@ taken as your answer and not asked again; anything it only hints at is still ask
 ├── bin/cli.js                 # npx sticky-rice-fighter: install, update, preflight
 ├── skills/                    # what the human runs, in their own session
 │   ├── preflight/SKILL.md     # is this machine ready, on its own
+│   ├── journey-mode/SKILL.md  # desktop or background journeys, or ask each run
 │   ├── init/SKILL.md          # Workspace Init Agent
 │   ├── analyze/SKILL.md       # Requirement Analysis Agent
 │   └── release/SKILL.md       # Release Agent
@@ -163,6 +165,11 @@ Agents ask one question at a time, as numbered options with a free-text slot las
 multi-repo, whether you want an MCP server, and whether agents may take the option they
 recommend without asking. After that, questions come only when a decision is genuinely
 yours — a login method, a provider setup, what to do when journey rework runs out.
+
+Each `/srf:release` asks once, before it starts, whether the journeys run in desktop
+mode (a visible browser you can watch) or background mode (headless). Set a lasting
+answer with `/srf:journey-mode desktop` or `/srf:journey-mode background`, and
+`/srf:journey-mode ask` brings the question back.
 
 Agents read what you gave them before asking. A question your requirement file already
 answers outright is not asked; the answer is recorded as yours, and the report says

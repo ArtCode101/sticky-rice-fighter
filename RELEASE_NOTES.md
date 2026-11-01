@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Desktop or background journeys, decided before the release
+
+- **The mode question moved to the start of `/srf:release`.** The Journey Test Agent
+  used to ask it after the build and deploy, in the middle of the release. The Release
+  Agent now settles it in its first step, before any repository is created, and passes
+  it to the Journey Test Agent with the release number. The answer lasts for the whole
+  run: every release under `auto`, every rework round. It is asked only when the
+  manifest lists a `journey` repository.
+- **New: `workspace.journey_mode`** — `desktop`, `background` or `ask`. `/srf:init`
+  writes `ask`; an absent field means `ask`, so existing workspaces keep working.
+  `desktop` or `background` runs without the question.
+- **New: `/srf:journey-mode [desktop | background | ask]`**
+  (`skills/journey-mode/SKILL.md`). Writes the human's choice to
+  `workspace.journey_mode` and nothing else; without an argument it shows the current
+  value and asks.
+- Unchanged: a journey that needs a human to click, such as a provider login, runs in
+  desktop mode whatever the mode.
+
 ### Preflight on its own, and questions the requirement already answers
 
 - **New: `/srf:preflight`** (`skills/preflight/SKILL.md`). When the framework was a

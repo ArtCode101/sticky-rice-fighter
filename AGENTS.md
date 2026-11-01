@@ -79,6 +79,7 @@ When a rule changes, it changes there.
 | Analyzing a requirement | `/srf:analyze` writes releases and screens, and stops for the human's approval. | `skills/analyze/SKILL.md` |
 | Running releases | `/srf:release` creates phase 2 repositories, starts, deploys and locks each release. | `skills/release/SKILL.md` |
 | Release execution | `workspace.release_execution`: `manual` stops after each lock, `auto` continues. Only the human changes it. | `knowledge/workspace/AGENTS.md` |
+| Journey mode | `workspace.journey_mode`: `desktop`, `background` or `ask`. `/srf:release` settles it before any release starts; the human sets it with `/srf:journey-mode`. | `knowledge/workspace/AGENTS.md`, `skills/journey-mode/SKILL.md` |
 | Asking the human | Read what the human gave before asking: a stated answer is not asked again, a hint is. One question at a time, numbered options, a free-text slot last; `auto_recommend` never skips a question with no recommendation. | `knowledge/questions/AGENTS.md` |
 | Datastore access | PostgreSQL, Kafka and Redis only through the Python tools in the `tool` repository, local hosts only, full privileges there. | `knowledge/tools/AGENTS.md` |
 | Backend traffic | Every caller reaches the backend through Nginx only, in development and deployed; every workspace with a backend has Nginx. | `knowledge/nginx/AGENTS.md` |

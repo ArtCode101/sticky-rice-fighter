@@ -11,7 +11,8 @@ framework itself lives in the plugin and is never edited from here.
 | `/srf:preflight` | any time | checks that this machine is ready to build, and changes nothing |
 | `/srf:init [requirement file]` | once, at the start | reads the requirement file if given, asks only the questions it does not answer, writes `workspace.yaml`, creates the phase 1 repositories |
 | `/srf:analyze <requirement>` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
-| `/srf:release` | after an approval | runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+| `/srf:release` | after an approval | asks desktop or background mode for the journeys, then runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+| `/srf:journey-mode [desktop \| background \| ask]` | any time | sets how journeys run: a visible browser, headless, or ask at every `/srf:release` |
 
 Raw requirements may be written in any language. Everything the framework produces
 is in English.
@@ -34,6 +35,7 @@ exists so the rules apply from the first message of every session.
   requirement is taken as yours, a hint is still asked.
 - **`workspace.yaml` is the memory.** `repo_layout`, `mcp_server`, `auto_recommend` and
   `release_execution` are read from it, never asked again. `release_execution` is
-  yours to flip between `manual` and `auto`.
+  yours to flip between `manual` and `auto`, and `journey_mode` yours to set with
+  `/srf:journey-mode`.
 - **Datastores only through the Python tools** in the `tool` repository; **backends
   only through Nginx**.

@@ -45,6 +45,7 @@ AI agents must not:
 | `workspace.mcp_server` | yes | `true` or `false`. Whether the human asked for an MCP server. Written at initialization; the Release Agent may later set it to `true` on the human's direct request. See **The MCP server is opt-in**. |
 | `workspace.auto_recommend` | yes | `true` or `false`. Whether agents may take the recommended option without asking. See `knowledge/questions/AGENTS.md`. |
 | `workspace.release_execution` | yes | `manual` or `auto`. What the Release Agent does after a release locks: `manual` stops for the human to click through, `auto` continues to the next `draft` release. Written as `manual` at initialization; only the human changes it, by editing the file. See **Release execution**. |
+| `workspace.journey_mode` | no | `desktop`, `background` or `ask`; absent means `ask`. How the journey tests run. Written as `ask` at initialization; only the human changes it, with `/srf:journey-mode` or by editing the file. See **Journey mode**. |
 | `repos[].name` | yes | Repository name. Names only — never a local host path. |
 | `repos[].type` | yes | One of `registry`, `requirement`, `deployment`, `config`, `tool`, `backend`, `frontend`, `mobile`, `batch`, `listener`, `mcp-server`, `journey`. |
 | `repos[].phase` | yes | Creation phase. `1` = created by the Workspace Init Agent at initialization, `2` = created by the Release Agent once the requirement analysis that lists it is approved. |
@@ -134,6 +135,24 @@ starts. Releases always run one at a time in ascending release number, in both m
 It is not one of the three questions. The Workspace Init Agent writes `manual`, and the
 human edits the manifest to change it. No agent writes it, ever. The question the Journey
 Test Agent asks when the rework rounds run out is asked in both modes.
+
+## Journey mode
+
+`workspace.journey_mode` decides whether the journey tests run in a visible browser or
+emulator, or headless. The Release Agent reads it at the start of every `/srf:release`
+run, before any release starts, and hands the mode to the Journey Test Agent.
+
+| Value | What `/srf:release` does |
+|---|---|
+| `desktop` | Runs every journey of this run in desktop mode, without asking. |
+| `background` | Runs every journey of this run in background mode, without asking. |
+| `ask` | Asks the mode question before it starts; the answer lasts for that run. |
+
+It is not one of the three questions. The Workspace Init Agent writes `ask`; the human
+changes it with `/srf:journey-mode` (`skills/journey-mode/SKILL.md`) or by editing the
+manifest. No other agent writes it. A journey that needs a human to click runs in
+desktop mode whatever the value; the modes themselves are defined in
+`knowledge/journey/AGENTS.md` → **Desktop or background mode**.
 
 ## Repository layout mode
 

@@ -180,7 +180,7 @@ not try.
 4. When it expires, the login screen comes back up and the human clicks once more.
 
 Because step 1 needs a human, a journey with provider login is **forced to desktop
-mode** and the mode question is not asked. See `knowledge/journey/AGENTS.md`.
+mode**, whatever mode was chosen for the run. See `knowledge/journey/AGENTS.md`.
 
 The storage state file holds a live session. It is git-ignored, never committed, and
 never copied between environments.

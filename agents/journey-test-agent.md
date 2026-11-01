@@ -44,6 +44,7 @@ That gate is the journeys' own assertions, not this agent's opinion:
 | Login method and provider rules | `knowledge/auth/AGENTS.md` |
 | Datastore access tools | `knowledge/tools/AGENTS.md` |
 | Question protocol | `knowledge/questions/AGENTS.md` |
+| Desktop or background mode | from the Release Agent, with the release number |
 | Test zone and dependency containers | `knowledge/local-env/AGENTS.md` |
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
 | Image tags | `knowledge/versioning/AGENTS.md` |
@@ -80,9 +81,11 @@ The Release Agent starts it once the release has deployed and
 6. **Provision the test zone** as its own compose project, `$WORKSPACE_NAME-test`, with
    only the dependencies the release uses and the application running from the images
    the release deployed. Wait until every service is healthy and the gateway answers.
-7. **Ask which mode** to run in, once per release — desktop is recommended and is the
-   default. Skip the question when a journey needs a human to click; that forces
-   desktop.
+7. **Take the mode** the Release Agent passed in, `desktop` or `background`, and
+   record it in the run report's `mode`. It was settled before the release started;
+   do not ask it again. A journey that needs a human to click runs in desktop mode
+   whatever the mode. Desktop when no mode was passed. For Playwright the mode reaches
+   the run as `JOURNEY_MODE`.
 8. **Run every required journey**, injecting each one's mock data first. Keep the test
    runner's own machine-readable result for the run — Playwright's JSON report and
    Maestro's JUnit report, under `runs/release-<n>/` as `knowledge/journey/AGENTS.md`
@@ -145,6 +148,8 @@ one. A defect in product code is fixed by the Coding Agent that owns that reposi
 - Type into a provider's login screen instead of having the human sign in once and
   reusing the saved session.
 - Commit a storage state file.
+- Ask the human which mode to run in, or run a journey that needs a human to click in
+  background mode.
 - Ask more than one question at a time, or skip a question that has no recommended
   option.
 
