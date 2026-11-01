@@ -97,7 +97,7 @@ provision the test zone          its own containers, from the images just deploy
 wait for readiness               every container healthy, the gateway answering
       |
       v
-run the required journeys        desktop mode by default; mock data per journey
+run the required journeys        in the mode set before the release; mock data per journey
       |
       +-- any failed --> evidence --> root cause --> fix --> rebuild/redeploy --> run again
       |                                                      (at most 3 rounds)
@@ -307,9 +307,21 @@ These files are committed with the journey repository and never deleted at clean
 
 ## Desktop or background mode
 
-**Desktop is the default**: a visible browser, at a desktop viewport, so the human can
-watch what the journey does. The agent asks once per release, before the first run, and
-every rework round reuses the answer:
+| Mode | What runs |
+|---|---|
+| `desktop` | a visible browser, at a desktop viewport, or a visible emulator; the human can watch what the journey does |
+| `background` | headless; faster, nothing to watch |
+
+The mode is settled **before the release starts**, not in the middle of it, so the
+human is not interrupted after the build. The Release Agent decides it once per
+`/srf:release` run, from `workspace.journey_mode` (`knowledge/workspace/AGENTS.md` →
+**Journey mode**), and passes it to the Journey Test Agent with the release number.
+Every release of that run, and every rework round, uses it.
+
+| `workspace.journey_mode` | Mode |
+|---|---|
+| `desktop` or `background` | that one, without asking |
+| `ask`, or absent | the answer to the question below |
 
 ```text
 Run the journeys in desktop or background mode?
@@ -319,12 +331,16 @@ Run the journeys in desktop or background mode?
   3. Something else — type your answer
 ```
 
-With `workspace.auto_recommend: true` desktop is taken without asking. When the human
-does not answer, it is desktop.
+The Release Agent asks it before the first release of the run starts, and only when the
+manifest lists a `journey` repository. With `workspace.auto_recommend: true` desktop is
+taken without asking. When the human does not answer, it is desktop. The answer is not
+written to the manifest; the human sets a lasting value with `/srf:journey-mode`.
 
-**The exception, which overrides the question:** a journey that needs a human to click
-something — a provider login screen above all — is **forced to desktop mode**, and the
-question is not asked for that run. Background mode cannot wait for a person.
+The mode is recorded in the run report's `mode` field.
+
+**The exception, which overrides the mode:** a journey that needs a human to click
+something — a provider login screen above all — is **forced to desktop mode** for that
+run, whatever mode was chosen. Background mode cannot wait for a person.
 
 ## Provider login
 
@@ -355,6 +371,8 @@ between environments. Full rules: `knowledge/auth/AGENTS.md`.
 - Build application images for the test zone instead of using the deploy's.
 - Leave the test zone's containers, volumes or networks behind after the journeys pass.
 - Tear down the develop zone's containers.
-- Ask the mode question when a human has to click something.
+- Ask the mode question in the middle of a release; it is settled before the release
+  starts.
+- Run a journey in background mode when a human has to click something.
 - Commit a storage state file.
 - Reach a datastore from a journey by any path but the Python tools.

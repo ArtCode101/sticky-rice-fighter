@@ -14,6 +14,8 @@ files summarize these rules in a line and link here.
 
 | Agent | Definition | Runs as | Human gate |
 |---|---|---|---|
+| Preflight | `skills/preflight/SKILL.md` | `/srf:preflight`, in the human's session | no |
+| Journey mode | `skills/journey-mode/SKILL.md` | `/srf:journey-mode`, in the human's session | no |
 | Workspace Init Agent | `skills/init/SKILL.md` | `/srf:init`, in the human's session | no |
 | Requirement Analysis Agent | `skills/analyze/SKILL.md` | `/srf:analyze`, in the human's session | **yes** |
 | Release Agent | `skills/release/SKILL.md` | `/srf:release`, in the human's session | no |
@@ -22,7 +24,9 @@ files summarize these rules in a line and link here.
 
 The three that talk to the human run in the human's own session, because they ask
 questions and wait for answers. The two that only build run as subagents, so several
-can run in parallel.
+can run in parallel. Preflight is not an agent: it runs the machine readiness check
+`/srf:init` also runs, on its own, and changes nothing. Journey mode is not an agent
+either: it writes the human's choice to `workspace.journey_mode`, and nothing else.
 
 There is deliberately no QA agent and no reviewer agent. Adding one reintroduces
 the loop this framework exists to avoid.
@@ -54,7 +58,8 @@ raw requirement
 Requirement Analysis Agent  --->  human approves  (the only gate)
       |
       v
-Release Agent               --->  creates phase 2 repositories
+Release Agent               --->  settles the journey mode: desktop or background
+      |                           creates phase 2 repositories
       |                           picks the next draft release, sets in_progress
       v
 Coding Agent x N            --->  one per repository, in parallel; build images
@@ -104,7 +109,9 @@ The three questions the Workspace Init Agent asks the human — monorepo or mult
 whether they want an MCP server, and whether agents may take the recommended option —
 are **inputs, not gates**, like every other question in
 `knowledge/questions/AGENTS.md`. Nothing is being approved and no work is held back
-pending a verdict. Do not turn any question into a checkpoint.
+pending a verdict. Do not turn any question into a checkpoint. A question the human's
+requirement file already answers outright is not asked at all; that rule is
+**Read before asking** in the same file.
 
 No agent has its own completion gate. No agent judges whether its own work is good
 enough. Any rule of the form "prove this is complete before continuing" is what
@@ -192,7 +199,8 @@ Every agent must:
 
 - Never write inside the framework, `${CLAUDE_PLUGIN_ROOT}`. A blocked write is
   reported to the human, not worked around.
-- Never write `workspace.release_execution`. Only the human flips it.
+- Never write `workspace.release_execution` or `workspace.journey_mode`. Only the human
+  changes them; `/srf:journey-mode` writes the latter on the human's answer.
 - Write only inside `WORKSPACE_PATH`, and within it only where its own definition
   says it may. Product code goes in the one repository it was assigned; the
   supporting paths each agent may also touch are listed in its definition.

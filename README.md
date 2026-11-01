@@ -6,7 +6,7 @@ runs on a local Docker host and a real user's journeys through it have been exec
 and passed.
 
 It is packaged as a **Claude Code plugin** named `srf`. You install it once, open
-Claude Code in the directory you want to build in, and drive it with three skills.
+Claude Code in the directory you want to build in, and drive it with a handful of skills.
 This repository is the framework: knowledge, rules, skills and subagent definitions.
 No product code is ever written here.
 
@@ -22,7 +22,7 @@ file is right.
 |---|---|
 | [Claude Code](https://claude.com/claude-code) | the framework runs as a Claude Code plugin |
 | Node.js 18 or newer with npm | only for the `npx` install; the manual install does not need it |
-| Java 25, Node.js 24 with npm, Docker, Python 3.13 | what the systems the framework builds need; `/srf:init` checks them with `preflight/checker.sh` (`checker.bat` on Windows) before it does anything else |
+| Java 25, Node.js 24 with npm, Docker, Python 3.13 | what the systems the framework builds need; `/srf:preflight` checks them, and `/srf:init` runs the same check before it does anything else |
 
 ### Option 1: one command with npx (recommended)
 
@@ -49,6 +49,16 @@ claude plugin install srf@sticky-rice-fighter --scope user
 `--scope user` makes the skills available in every directory you open. Use
 `--scope project` to install it for one project only.
 
+### Check the machine
+
+```bash
+npx sticky-rice-fighter preflight
+```
+
+or `/srf:preflight` inside Claude Code. Both run `preflight/checker.sh` (`checker.bat`
+on Windows) and change nothing; `/srf:init` runs the same check before it does anything
+else.
+
 ### Check the install
 
 ```bash
@@ -56,7 +66,7 @@ claude plugin list
 ```
 
 `srf@sticky-rice-fighter` should be listed as enabled. Inside Claude Code, typing `/srf:`
-should offer `init`, `analyze` and `release`.
+should offer `preflight`, `init`, `analyze`, `release` and `journey-mode`.
 
 ### Update
 
@@ -112,25 +122,33 @@ claude plugin marketplace remove sticky-rice-fighter
 4. Describe what you want built, in any language, and run `/srf:analyze`. Read the
    releases and screen specifications it produces, then approve them. This is the only
    gate.
-5. Run `/srf:release`. It builds, deploys and tests the next `draft` release, then locks
-   it. With `release_execution: manual` (the default), run `/srf:release` again for each
+5. Run `/srf:release`. It first asks whether the journeys run in desktop or background
+   mode, then builds, deploys and tests the next `draft` release, and locks it. With
+   `release_execution: manual` (the default), run `/srf:release` again for each
    following release; with `auto` it continues on its own.
 6. For a new requirement later, open Claude Code in the same directory and start again
    from step 4.
 
-### The three skills
+### The skills
 
 Inside Claude Code:
 
 | Skill | When | What it does |
 |---|---|---|
-| `/srf:init` | once, at the start | asks the three questions, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories |
-| `/srf:analyze` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
-| `/srf:release` | after an approval | runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+| `/srf:preflight` | any time | checks that this machine is ready to build, and changes nothing |
+| `/srf:init [requirement file]` | once, at the start | reads the requirement file if given, asks only the questions it does not answer, writes `workspace.yaml` and `CLAUDE.md`, creates the phase 1 repositories |
+| `/srf:analyze <requirement>` | for every new requirement | turns it into releases and screen specifications, then waits for your approval |
+| `/srf:release` | after an approval | asks desktop or background mode for the journeys, then runs the next `draft` release until it is deployed, its journeys pass, and it locks |
+| `/srf:journey-mode [desktop \| background \| ask]` | any time | sets how journeys run: a visible browser, headless, or ask at every `/srf:release` |
 
 The directory you opened Claude Code in **is** the workspace. Everything the framework
 writes lands inside it; nothing is written into the plugin. `CLAUDE.md`, placed by
 `/srf:init`, carries the framework's rules into every later session in that directory.
+
+If the requirement is already written down, give its path to both skills:
+`/srf:init requirement.md`, then `/srf:analyze requirement.md`. Anything the file
+states — "one repository", "needs an MCP server", "users sign in with Google" — is
+taken as your answer and not asked again; anything it only hints at is still asked.
 
 ## Layout
 
@@ -142,7 +160,10 @@ writes lands inside it; nothing is written into the plugin. `CLAUDE.md`, placed 
 ├── .claude-plugin/
 │   ├── plugin.json            # the srf plugin: name and version
 │   └── marketplace.json       # the marketplace that serves it
+├── bin/cli.js                 # npx sticky-rice-fighter: install, update, preflight
 ├── skills/                    # what the human runs, in their own session
+│   ├── preflight/SKILL.md     # is this machine ready, on its own
+│   ├── journey-mode/SKILL.md  # desktop or background journeys, or ask each run
 │   ├── init/SKILL.md          # Workspace Init Agent
 │   ├── analyze/SKILL.md       # Requirement Analysis Agent
 │   └── release/SKILL.md       # Release Agent
@@ -232,6 +253,15 @@ Agents ask one question at a time, as numbered options with a free-text slot las
 multi-repo, whether you want an MCP server, and whether agents may take the option they
 recommend without asking. After that, questions come only when a decision is genuinely
 yours — a login method, a provider setup, what to do when journey rework runs out.
+
+Each `/srf:release` asks once, before it starts, whether the journeys run in desktop
+mode (a visible browser you can watch) or background mode (headless). Set a lasting
+answer with `/srf:journey-mode desktop` or `/srf:journey-mode background`, and
+`/srf:journey-mode ask` brings the question back.
+
+Agents read what you gave them before asking. A question your requirement file already
+answers outright is not asked; the answer is recorded as yours, and the report says
+where it came from. A hint is not an answer, so that question is still asked.
 
 `NOTES.md` holds ideas that were recorded and deliberately not built; no agent works
 from it.

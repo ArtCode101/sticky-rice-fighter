@@ -4,9 +4,10 @@
 // where the application runs as a container - never against the develop zone the human
 // is clicking through.
 //
-// Desktop or background mode is the human's answer to the mode question, passed in as
-// JOURNEY_MODE. Desktop is the default. A journey that needs someone to click is forced
-// to desktop and does not get asked; see knowledge/journey/AGENTS.md.
+// Desktop or background mode is settled by /srf:release before the release starts, from
+// workspace.journey_mode or the human's answer, and passed in as JOURNEY_MODE. Desktop
+// is the default. A journey that needs someone to click is forced to desktop whatever
+// the mode; see knowledge/journey/AGENTS.md.
 
 import { defineConfig, devices } from '@playwright/test';
 

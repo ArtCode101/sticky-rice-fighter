@@ -1,6 +1,6 @@
 ---
 name: release
-description: Run the release queue of this workspace after the human approved the requirement analysis. Creates phase 2 repositories, spawns one coding-agent per repository, deploys, runs the journeys, locks the release, and follows workspace.release_execution.
+description: Run the release queue of this workspace after the human approved the requirement analysis. Settles the journey mode (desktop or background) first, creates phase 2 repositories, spawns one coding-agent per repository, deploys, runs the journeys, locks the release, and follows workspace.release_execution.
 disable-model-invocation: true
 ---
 
@@ -23,6 +23,7 @@ exit code or the human's answer. It never judges whether anyone's work is good e
 |---|---|
 | `WORKSPACE_PATH` | the directory Claude Code was opened in, `${CLAUDE_PROJECT_DIR}` |
 | Release execution mode | `workspace.release_execution` in `${WORKSPACE_PATH}/workspace.yaml` |
+| Journey mode | `workspace.journey_mode` in `${WORKSPACE_PATH}/workspace.yaml`; see `knowledge/workspace/AGENTS.md` → **Journey mode** |
 | Coding Agent | the `srf:coding-agent` subagent, `agents/coding-agent.md` |
 | Journey Test Agent | the `srf:journey-test-agent` subagent, `agents/journey-test-agent.md` |
 | Workspace manifest | `${WORKSPACE_PATH}/workspace.yaml` |
@@ -51,38 +52,50 @@ exit code or the human's answer. It never judges whether anyone's work is good e
 
 Starts when the human has approved the Requirement Analysis Agent's output.
 
-1. **Create the phase 2 repositories.** For every `phase: 2` entry in the manifest that
+1. **Settle the journey mode**, before anything else, so the human is not interrupted
+   once the build is under way. Only when the manifest lists a `journey` repository;
+   otherwise there is nothing to run and nothing to ask. Read
+   `workspace.journey_mode` (absent means `ask`):
+   - `desktop` or `background`: that is the mode, without asking.
+   - `ask`: ask the mode question in `knowledge/journey/AGENTS.md` → **Desktop or
+     background mode**. With `workspace.auto_recommend: true` take desktop without
+     asking and say so; with no answer, desktop.
+
+   The mode lasts for this whole `/srf:release` run — every release it runs under
+   `auto`, and every rework round. It is not written to the manifest; the human sets a
+   lasting value with `/srf:journey-mode`.
+2. **Create the phase 2 repositories.** For every `phase: 2` entry in the manifest that
    does not exist yet, create it exactly as the Workspace Init Agent creates a phase 1
    repository for `workspace.repo_layout` — its own git repository with an initial commit
    in `multi`, a directory in the workspace repository in `mono` — give it a `README.md`
    naming it and its type, and add it to the registry's `repos.yaml`. This includes the
    `tool` and `journey` repositories when the manifest lists them.
-2. **Clear stale locks.** No agent of this workspace is running yet, so remove every
+3. **Clear stale locks.** No agent of this workspace is running yet, so remove every
    entry under `${WORKSPACE_PATH}/.locks/`.
-3. **Pick the release.** The lowest-numbered release whose `status` is `draft`. If a
+4. **Pick the release.** The lowest-numbered release whose `status` is `draft`. If a
    release is `in_progress`, that one is resumed instead; never two at once.
-4. **Start it.** Set its `status: in_progress`. In `multi` layout, commit that change in
+5. **Start it.** Set its `status: in_progress`. In `multi` layout, commit that change in
    the `requirement` repository. In `mono` layout leave it uncommitted; it lands in the
    release's one commit.
-5. **Spawn the Coding Agents.** One `srf:coding-agent` subagent per repository in the
+6. **Spawn the Coding Agents.** One `srf:coding-agent` subagent per repository in the
    release's **Repositories touched** table, in parallel, each told the release number
    and exactly one repository.
-6. **Deploy.** When every Coding Agent has reported done, run the `deployment`
+7. **Deploy.** When every Coding Agent has reported done, run the `deployment`
    repository's `local/deploy.sh`, then `${CLAUDE_PLUGIN_ROOT}/preflight/done-check.sh` with the flags the
    release needs (`--gateway` whenever the workspace has a backend, `--mcp` when the
    release ships the `mcp-server`). This agent is the only one that deploys, so parallel
    Coding Agents never deploy over each other. A failure goes back to the Coding Agent
    whose service failed, then this step runs again; this is the deploy, not a review.
-7. **Journeys.** If the release has a screen a user walks through, spawn the
-   `journey-test-agent` subagent with the release number. When it records a root cause in product code or configuration, pass the
+8. **Journeys.** If the release has a screen a user walks through, spawn the
+   `journey-test-agent` subagent with the release number and the mode from step 1. When it records a root cause in product code or configuration, pass the
    run report to the Coding Agent that owns that repository, wait for its rebuilt image,
-   redeploy and pass `done-check.sh` as in step 6, give the Journey Test Agent the new
+   redeploy and pass `done-check.sh` as in step 7, give the Journey Test Agent the new
    image tags, and tell it to run again. The round count lives in the run report;
    this agent does not count rounds of its own.
-8. **When the rounds run out**, the Journey Test Agent asks the human. Act on the
-   answer exactly: *lock anyway* → step 9; *three more rounds* → back to step 7;
+9. **When the rounds run out**, the Journey Test Agent asks the human. Act on the
+   answer exactly: *lock anyway* → step 10; *three more rounds* → back to step 8;
    *leave it open* → stop and report, leaving the release `in_progress`.
-9. **Lock.** Only when `done-check.sh` passed and, for a release with journeys,
+10. **Lock.** Only when `done-check.sh` passed and, for a release with journeys,
    `${CLAUDE_PLUGIN_ROOT}/preflight/journey-check.sh runs/release-<n>.md` exits `0`:
    - `mono`: make the release's one commit at the workspace root, covering every
      repository's changes and the journey rework.
@@ -90,10 +103,10 @@ Starts when the human has approved the Requirement Analysis Agent's output.
      already committed and tagged its own repository.
    - Set `status: locked`, `deployed_at` and `commit` in `release.md`, then commit that
      change. That commit is the lock.
-10. **Clear this release's locks** under `${WORKSPACE_PATH}/.locks/`.
-11. **Next release.** Read `workspace.release_execution` from the manifest:
+11. **Clear this release's locks** under `${WORKSPACE_PATH}/.locks/`.
+12. **Next release.** Read `workspace.release_execution` from the manifest:
     - `manual`: stop. Report what was locked and how to click through it.
-    - `auto`: go to step 3, until no `draft` release is left.
+    - `auto`: go to step 4, until no `draft` release is left.
 
 ## Turning on an MCP server later
 
@@ -128,8 +141,9 @@ Everything else is out of bounds.
   `journey-check.sh` exits `0`.
 - Judge, review or second-guess any agent's work, or ask the human to approve it.
 - Count rework rounds itself, or start a fourth round without the human's answer.
-- Write `release_execution`, `repo_layout` or `auto_recommend`, or set `mcp_server` to
-  `false`.
+- Write `release_execution`, `repo_layout`, `auto_recommend` or `journey_mode`, or set
+  `mcp_server` to `false`.
+- Ask the journey mode anywhere but step 1, or more than once per run.
 - Remove a lock while an agent of the current release is still running.
 - Write any file inside the framework, `${CLAUDE_PLUGIN_ROOT}`.
 - Ask more than one question at a time.

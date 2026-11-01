@@ -11,7 +11,7 @@
       "name": "srf",
       "source": "./",
       "description": "sticky-rice-fighter: builds a system in the workspace you open Claude Code in, release by release, with one human approval and mechanical done checks.",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "category": "development"
     }
   ]
