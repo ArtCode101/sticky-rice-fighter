@@ -61,7 +61,7 @@ AI agents must not:
 | `config` | 1 or more | Configuration for every part of the system. Read by the deployment repository at deploy time. Created empty in phase 1. |
 | `tool` | 0 or 1 | The Python tools that are the only sanctioned way for an agent to reach PostgreSQL, Kafka or Redis. See `knowledge/tools/AGENTS.md`. |
 | `backend` | 0 or more | Backend services, split by domain. Created in phase 2. |
-| `frontend` | 0 or more | Frontend applications, split by user group. Created in phase 2. |
+| `frontend` | 0 or more | Frontend applications, split by user group. Created in phase 2. See `knowledge/frontend/AGENTS.md`. |
 | `batch` | 0 or more | Batch jobs. **One repository per batch job.** Created in phase 2. |
 | `listener` | 0 or more | Queue and stream listeners. **One repository per listener.** Created in phase 2. |
 | `mcp-server` | 0 or 1 | The MCP adapter over the backend API, so an outside AI agent can drive the system. Created in phase 2, and **only when the human asked for one**. See `knowledge/mcp/AGENTS.md`. |

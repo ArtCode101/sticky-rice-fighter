@@ -85,6 +85,8 @@ When a rule changes, it changes there.
 | Backend traffic | Every caller reaches the backend through Nginx only, in development and deployed; every workspace with a backend has Nginx. | `knowledge/nginx/AGENTS.md` |
 | MCP servers | Built only when the human asked; generated mechanically from the backends' OpenAPI documents, in its own release; never touches a datastore. | `knowledge/mcp/AGENTS.md` |
 | Authentication | The login method is asked, never assumed; the identity token is a nested JWT, signed then encrypted; keys per group and per environment. | `knowledge/auth/AGENTS.md` |
+| Ports and other people's applications | An agent starts and stops only what belongs to its workspace. A port held by anything else is left alone, and the agent's own application moves to a free port. | `knowledge/local-run/AGENTS.md` |
+| Frontends | Next.js on Node.js on the host while developing; a static export served by Nginx in the Docker image, so code is written for the export from the start. | `knowledge/frontend/AGENTS.md` |
 | Mobile apps | React Native on Expo, split by user group, no secret in a build. | `knowledge/mobile/AGENTS.md` |
 | Journeys | A release locks only when its required journeys have run and passed in the test zone; rework is bounded at 3 rounds. | `knowledge/journey/AGENTS.md` |
 | Versions and image tags | Every version in `knowledge/tech-stack.yaml` is exact; consumed images are never `latest`; produced images are tagged by layout. | `knowledge/versioning/AGENTS.md` |

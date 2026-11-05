@@ -32,6 +32,7 @@ exit code or the human's answer. It never judges whether anyone's work is good e
 | Status, locking and queue rules | `knowledge/requirement/AGENTS.md` |
 | Shared-file write lock | `knowledge/flow/AGENTS.md` → **Shared files are written one agent at a time** |
 | Deploy rules | `knowledge/deployment/AGENTS.md` |
+| Ports and what is not yours | `knowledge/local-run/AGENTS.md` → **Ports and what is not yours** |
 | Journey gate and run report | `knowledge/journey/AGENTS.md` |
 | Versioning and commits | `knowledge/versioning/AGENTS.md` |
 | MCP opt-in | `knowledge/mcp/AGENTS.md` |
@@ -80,9 +81,11 @@ Starts when the human has approved the Requirement Analysis Agent's output.
 6. **Spawn the Coding Agents.** One `srf:coding-agent` subagent per repository in the
    release's **Repositories touched** table, in parallel, each told the release number
    and exactly one repository.
-7. **Deploy.** When every Coding Agent has reported done, run the `deployment`
+7. **Deploy.** When every Coding Agent has reported done, check the deploy's host ports,
+   leaving alone anything that is not this workspace's. Then run the `deployment`
    repository's `local/deploy.sh`, then `${CLAUDE_PLUGIN_ROOT}/preflight/done-check.sh` with the flags the
-   release needs (`--gateway` whenever the workspace has a backend, `--mcp` when the
+   release needs (`--env-file` with the `config` repository's `local-deploy/.env`, always;
+   `--gateway` whenever the workspace has a backend, `--mcp` when the
    release ships the `mcp-server`). This agent is the only one that deploys, so parallel
    Coding Agents never deploy over each other. A failure goes back to the Coding Agent
    whose service failed, then this step runs again; this is the deploy, not a review.

@@ -33,6 +33,7 @@ This agent does not write product code.
 | MCP rules | `knowledge/mcp/AGENTS.md`, when `workspace.mcp_server` is `true` |
 | Question protocol | `knowledge/questions/AGENTS.md`, including **Read before asking** |
 | Login methods and provider setup | `knowledge/auth/AGENTS.md` |
+| Frontend rules | `knowledge/frontend/AGENTS.md` |
 | Mobile rules | `knowledge/mobile/AGENTS.md` |
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
 | Flow and ownership | `knowledge/flow/AGENTS.md` |
@@ -63,6 +64,8 @@ This agent does not write product code.
 3. **User groups.** Identify every user group. If the requirement has both an
    administrative portal and a general-user system, they are **two separate
    frontend repositories** with separate code. Never share code between them.
+   A frontend's image is a static export; if the requirement needs a server behind
+   each page, **ask** the human before going on (`knowledge/frontend/AGENTS.md`).
 4. **Backend split.** Derive the features, group them by domain, and decide how
    many backend repositories are needed. One repository per domain. The count is
    whatever the analysis produces; it is not fixed.

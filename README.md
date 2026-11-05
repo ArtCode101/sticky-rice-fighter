@@ -184,6 +184,7 @@ taken as your answer and not asked again; anything it only hints at is still ask
 │   ├── journey/               # user journeys, mock data and journey tests
 │   ├── versioning/            # git tags and image tags, by repository layout
 │   ├── local-env/             # dependency containers for the develop phase
+│   ├── frontend/              # Node.js while developing, static export in the image
 │   ├── local-run/             # running backend, frontend and Nginx on the host
 │   ├── nginx/                 # the mandatory gateway in front of every backend
 │   ├── mcp/                   # the MCP server generated over the backend API

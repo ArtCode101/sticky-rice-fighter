@@ -198,8 +198,10 @@ version — and redeploy. No one is assigned fault for the difference.
 3. Point the application services at the image tags the release just deployed.
 4. Include Nginx. Journeys reach the backend through the test zone's gateway, like
    every other caller.
-5. `docker compose -p "$WORKSPACE_NAME-test" -f compose.yml up -d --wait`
-6. **Wait for readiness** before any journey starts: every service healthy, the gateway
+5. Check the host ports, per `knowledge/local-run/AGENTS.md` → **Ports and what is not
+   yours**. One that is taken moves through its `TEST_*_PORT` value.
+6. `docker compose -p "$WORKSPACE_NAME-test" -f compose.yml up -d --wait`
+7. **Wait for readiness** before any journey starts: every service healthy, the gateway
    answering. A journey that fails because a container was still starting is not a
    journey failure; it is a provisioning step that was skipped.
 

@@ -16,7 +16,7 @@ WORKSPACE_ROOT="$DEPLOYMENT_ROOT/.."
 
 # Replace with the real config repository name from the workspace manifest.
 CONFIG_REPO="$WORKSPACE_ROOT/my-workspace-config"
-CONFIG_ENV="$CONFIG_REPO/local/.env"
+CONFIG_ENV="$CONFIG_REPO/local-deploy/.env"
 
 COMPOSE_FILE="$SCRIPT_DIR/compose.yml"
 
@@ -35,4 +35,4 @@ printf "Using config: %s\n" "$CONFIG_ENV"
 docker compose --env-file "$CONFIG_ENV" -f "$COMPOSE_FILE" up -d --build
 
 printf "\nDeployed. Verify with:\n"
-printf "  <framework>/preflight/done-check.sh %s <url> [url...]\n" "$COMPOSE_FILE"
+printf "  <framework>/preflight/done-check.sh --env-file %s %s <url> [url...]\n" "$CONFIG_ENV" "$COMPOSE_FILE"

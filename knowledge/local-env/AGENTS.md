@@ -77,8 +77,8 @@ Rules:
 - The local environment **stays up across releases**. It is the workspace's
   environment, not a per-release resource, so nothing tears it down when a release
   locks.
-- Only the human decides to stop or destroy it. An agent may run `up` and `status`
-  freely; it must not run `destroy` unless the human asked for it.
+- An agent may run `up`, `status` and `down` freely, because `down` keeps the data. It
+  must not run `destroy` unless the human asked for it.
 - Data persists through `down`. `destroy` is the only command that deletes data.
 
 ## Isolation
@@ -89,6 +89,8 @@ networks and volumes are namespaced per workspace.
 AI agents must not:
 
 - Reuse a container, network or volume belonging to another workspace.
+- Touch anything that is not this workspace's because its port is taken. See
+  `knowledge/local-run/AGENTS.md` → **Ports and what is not yours**.
 - Start a dependency outside this mechanism, so that nothing escapes the
   workspace's compose project.
 - Modify the knowledge files in this directory during normal project generation.
@@ -100,7 +102,8 @@ The local environment is **development scaffolding, not the definition of done**
 
 - Here: dependency containers, plus backend, frontend and Nginx running as host
   processes (see `knowledge/nginx/`). This is the develop phase.
-- Definition of done: the whole system deployed on the local Docker host from the
+- Definition of done: the whole system deployed beside it, under its own name and ports,
+  on the local Docker host from the
   `deployment` repository and verified with `preflight/done-check.sh`, then its
   required journeys passed in the test zone and verified with
   `preflight/journey-check.sh`.

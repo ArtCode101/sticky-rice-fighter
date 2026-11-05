@@ -45,6 +45,31 @@ Release Agent runs `local/deploy.sh`.
 | Template | Copy to |
 |---|---|
 | `knowledge/deployment/templates/deploy-local.sh` | `local/deploy.sh` |
+| `knowledge/deployment/templates/deploy.env.example` | the `config` repository's `local-deploy/.env.example`, lock `config-local` |
+
+## The local deploy runs beside the develop zone
+
+The develop zone stays up across releases, and the human may be using it during a
+deploy, so the two never share a container name, a host port or a compose project.
+
+| | Develop zone | Local deploy |
+|---|---|---|
+| Configuration | `config` repository, `local/.env` | `config` repository, `local-deploy/.env` |
+| `WORKSPACE_NAME`, and so container names | `<workspace>` | `<workspace>-deploy` |
+| Compose project | `<workspace>` | `<workspace>-deploy` |
+| Default gateway port | 8000 | 28000 |
+
+The rest of the local deploy's host ports are in `templates/deploy.env.example`. A port
+that is taken moves per `knowledge/local-run/AGENTS.md` → **Ports and what is not yours**.
+
+`local/compose.yml` starts with this line, naming its compose project:
+
+```yaml
+name: <workspace>-deploy
+```
+
+Without it, Compose names the project after the directory, `local`, in every workspace.
+Deploying one workspace would then recreate another workspace's containers.
 
 Infrastructure services in `local/compose.yml` come from the infrastructure
 knowledge templates, not from scratch:
@@ -53,6 +78,7 @@ knowledge templates, not from scratch:
 - `knowledge/redis/templates/docker-compose.yml`
 - `knowledge/kafka/templates/docker-compose.yml`
 - `knowledge/nginx/templates/docker-compose.yml`
+- `knowledge/frontend/templates/docker-compose.yml`, one service per `frontend`
 - `knowledge/mcp/templates/docker-compose.yml`, only when the workspace has an
   `mcp-server`
 
@@ -71,8 +97,9 @@ AI agents should:
 - Reuse those templates as-is, keeping the pinned image versions, health checks,
   volumes, ports and restart policies.
 - Read every configuration value from the `config` repository.
-- Verify a local deploy with `preflight/done-check.sh`, passing
-  `--gateway <url>` whenever the workspace has a backend.
+- Verify a local deploy with `preflight/done-check.sh`, passing `--env-file` with the
+  `local-deploy/.env` the deploy used, and `--gateway <url>` whenever the workspace has
+  a backend.
 
 AI agents must not:
 

@@ -24,6 +24,8 @@ It is created empty in phase 1 and filled in as releases need it.
 ├── local/
 │   ├── .env.example       # every key the local deploy needs, with safe defaults
 │   └── <repo>/            # per-repository configuration, if a repo needs its own
+├── local-deploy/
+│   └── .env.example       # every key the local deploy needs; its own name and ports
 ├── environments/
 │   ├── dev/
 │   │   └── .env.example
@@ -34,7 +36,9 @@ It is created empty in phase 1 and filled in as releases need it.
 └── README.md
 ```
 
-- One directory per environment. `local/` is the one the definition of done uses.
+- One directory per environment. `local/` is the develop zone, on the host.
+  `local-deploy/` is the same machine's Docker deploy, which the definition of done
+  uses. See `knowledge/deployment/AGENTS.md`.
 - `.env.example` is committed. The real `.env` is git-ignored and never committed.
 
 ## Authentication keys
@@ -86,6 +90,14 @@ That credential is a configuration value like any other:
   and that is what gets exchanged.
 
 The MCP server never has a key of its own. It is not an authentication group. See `knowledge/mcp/AGENTS.md`.
+
+## A frontend needs no API address
+
+A frontend's image is a static export, so nothing in it can read configuration at
+runtime. It does not need to for the backend: the browser calls a relative path and the
+gateway serves both, so one image runs in every environment. A value that must reach
+the browser is embedded at build time and is public, and if it differs per environment
+there is one build per environment. See `knowledge/frontend/AGENTS.md`.
 
 ## Mobile configuration is embedded at build time
 

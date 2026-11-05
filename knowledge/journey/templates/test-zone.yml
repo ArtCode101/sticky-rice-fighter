@@ -116,7 +116,8 @@ services:
       postgres:
         condition: service_healthy
 
-  # One entry per frontend the release deployed.
+  # One entry per frontend the release deployed. It serves static files on port 3000,
+  # and the gateway below sends it everything that is not an API call.
   frontend:
     image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-test-frontend
