@@ -28,13 +28,14 @@ repository. The Release Agent spawns them, deploys their work and locks the rele
 | Backend project layout | `knowledge/java-spring-boot/project-structure.md` |
 | Infrastructure templates | `knowledge/database/`, `knowledge/redis/`, `knowledge/kafka/` |
 | Local environment provisioning | `knowledge/local-env/AGENTS.md` |
-| Host-process development | `knowledge/local-run/AGENTS.md` |
+| Host-process development, ports and what is not yours | `knowledge/local-run/AGENTS.md` |
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
 | Deploy layout | `knowledge/deployment/AGENTS.md` |
 | Configuration layout and keys | `knowledge/config/AGENTS.md` |
 | Specification status and locking | `knowledge/requirement/AGENTS.md` |
 | Datastore access tools | `knowledge/tools/AGENTS.md` |
 | MCP server rules | `knowledge/mcp/AGENTS.md`, when the assigned repository is the `mcp-server` |
+| Frontend rules and templates | `knowledge/frontend/AGENTS.md`, when the assigned repository is a `frontend` |
 | Mobile rules | `knowledge/mobile/AGENTS.md`, when the assigned repository is a `mobile` app |
 | Login and token rules | `knowledge/auth/AGENTS.md` |
 | Versioning and image tagging | `knowledge/versioning/AGENTS.md` |
@@ -101,12 +102,15 @@ in the run report, not by this agent.
 While writing code this agent may, without asking:
 
 - Provision and start the dependency containers for the workspace, per
-  `knowledge/local-env/AGENTS.md`. `up` and `status` are free; `destroy` is not —
-  only the human asks for that.
+  `knowledge/local-env/AGENTS.md`. `up`, `status` and `down` are free; `destroy` is
+  not — only the human asks for that.
 - Run the backend, frontend, batch jobs, listeners, Nginx and the MCP server as
   **host processes**, per `knowledge/local-run/AGENTS.md`, to see the code work
   immediately. A mobile app runs on the Android Emulator or the iOS Simulator, driven
   with `adb` or `simctl`, with screenshots when the agent needs to see the screen.
+- Stop and restart what belongs to this workspace. A port held by anything else is left
+  alone and this workspace's process moves, per `knowledge/local-run/AGENTS.md` →
+  **Ports and what is not yours**.
 - Generate mock data for the human to click through, through the Python tools. This is
   the develop zone's data and is separate from a journey's mock data, which belongs to
   the Journey Test Agent.

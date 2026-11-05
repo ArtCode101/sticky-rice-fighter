@@ -156,7 +156,7 @@ In `multi` layout each repository commits as it always has.
 |---|---|
 | `local-env` | everything under `${WORKSPACE_PATH}/local-env/` except `test/`, including the develop Nginx configuration |
 | `deployment-local` | the `deployment` repository's `local/` directory: `compose.yml`, `deploy.sh`, the Nginx configuration it mounts |
-| `config-local` | the `config` repository's `local/` directory |
+| `config-local` | the `config` repository's `local/` and `local-deploy/` directories |
 | `tool` | the `tool` repository |
 
 To write any of these:

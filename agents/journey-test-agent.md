@@ -46,6 +46,7 @@ That gate is the journeys' own assertions, not this agent's opinion:
 | Question protocol | `knowledge/questions/AGENTS.md` |
 | Desktop or background mode | from the Release Agent, with the release number |
 | Test zone and dependency containers | `knowledge/local-env/AGENTS.md` |
+| Ports and what is not yours | `knowledge/local-run/AGENTS.md` → **Ports and what is not yours** |
 | Gateway rule | `knowledge/nginx/AGENTS.md` |
 | Image tags | `knowledge/versioning/AGENTS.md` |
 | Deploy layout | `knowledge/deployment/AGENTS.md` |
@@ -80,7 +81,9 @@ The Release Agent starts it once the release has deployed and
    It does not change between rounds.
 6. **Provision the test zone** as its own compose project, `$WORKSPACE_NAME-test`, with
    only the dependencies the release uses and the application running from the images
-   the release deployed. Wait until every service is healthy and the gateway answers.
+   the release deployed. Check its host ports first; a port held by anything that is not
+   this workspace's moves the test zone, not the holder. Wait until every service is
+   healthy and the gateway answers.
 7. **Take the mode** the Release Agent passed in, `desktop` or `background`, and
    record it in the run report's `mode`. It was settled before the release started;
    do not ask it again. A journey that needs a human to click runs in desktop mode

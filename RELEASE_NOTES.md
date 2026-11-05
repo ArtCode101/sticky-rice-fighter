@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 2.1.0 — 2026-11-02
 
 ### Desktop or background journeys, decided before the release
 
@@ -45,6 +45,8 @@
   does not name the answer. Naming a login method is still not assuming one.
 - Plugin version `2.1.0`, in `.claude-plugin/plugin.json`, `marketplace.json` and the
   npm package.
+
+## 2.0.0 — 2026-10-31
 
 ### The framework is a plugin, and runs from the workspace
 

@@ -9,9 +9,13 @@
 # pass.
 #
 # Usage:
-#   preflight/done-check.sh [--gateway <url>]
+#   preflight/done-check.sh [--env-file <file>] [--gateway <url>]
 #                           [--mcp <url> --mcp-tool <name> [--mcp-args <json>] [--mcp-token <token>]]
 #                           <compose-file> <url> [url...]
+#
+# --env-file is the file local/deploy.sh deployed with: the config repository's
+# local-deploy/.env. The compose templates require values from it, so without it Compose
+# cannot read the compose file at all.
 #
 # --gateway asserts that Nginx is deployed and answering. Every release of a workspace
 # that has a backend must pass it, because every caller reaches the backend through
@@ -25,14 +29,16 @@
 # mcp-server repository's README names for this check.
 #
 # Example:
-#   preflight/done-check.sh --gateway http://localhost:8000 \
+#   preflight/done-check.sh --env-file ../my-workspace/my-workspace-config/local-deploy/.env \
+#       --gateway http://localhost:28000 \
 #       ../my-workspace/my-workspace-deployment/local/compose.yml \
-#       http://localhost:8000
+#       http://localhost:28000
 #
-#   preflight/done-check.sh --gateway http://localhost:8000 \
-#       --mcp http://localhost:8100/mcp --mcp-tool listAccounts \
+#   preflight/done-check.sh --env-file ../my-workspace/my-workspace-config/local-deploy/.env \
+#       --gateway http://localhost:28000 \
+#       --mcp http://localhost:28100/mcp --mcp-tool listAccounts \
 #       ../my-workspace/my-workspace-deployment/local/compose.yml \
-#       http://localhost:8000
+#       http://localhost:28000
 #
 # Exit codes:
 #   0 - done: every service is up and every url responded
@@ -51,7 +57,7 @@ pass() { printf "${GREEN}[OK]${NC}   %s\n" "$1"; }
 fail() { printf "${RED}[FAIL]${NC} %s\n" "$1"; FAILED=1; }
 
 usage() {
-    printf "usage: %s [--gateway <url>] [--mcp <url> --mcp-tool <name> [--mcp-args <json>] [--mcp-token <token>]] <compose-file> <url> [url...]\n" "$0"
+    printf "usage: %s [--env-file <file>] [--gateway <url>] [--mcp <url> --mcp-tool <name> [--mcp-args <json>] [--mcp-token <token>]] <compose-file> <url> [url...]\n" "$0"
 }
 
 # --gateway asserts that Nginx is deployed as a service and answers on that url.
@@ -59,6 +65,7 @@ usage() {
 #
 # --mcp asserts the definition of done for a release that ships an MCP server: the
 # service is deployed, it lists its tools, and one real tool call reaches the backend.
+ENV_FILE=""
 GATEWAY_URL=""
 MCP_URL=""
 MCP_TOOL=""
@@ -66,6 +73,14 @@ MCP_ARGS="{}"
 MCP_TOKEN=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        --env-file)
+            ENV_FILE="${2:-}"
+            if [ -z "$ENV_FILE" ]; then
+                usage
+                exit 2
+            fi
+            shift 2
+            ;;
         --gateway)
             GATEWAY_URL="${2:-}"
             if [ -z "$GATEWAY_URL" ]; then
@@ -112,6 +127,19 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
+if [ -n "$ENV_FILE" ] && [ ! -f "$ENV_FILE" ]; then
+    printf "${RED}[FAIL]${NC} env file not found: %s\n" "$ENV_FILE"
+    exit 1
+fi
+
+compose() {
+    if [ -n "$ENV_FILE" ]; then
+        docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+    else
+        docker compose -f "$COMPOSE_FILE" "$@"
+    fi
+}
+
 # 1. The Docker daemon must be running.
 if ! docker info >/dev/null 2>&1; then
     fail "Docker daemon is not running"
@@ -122,11 +150,12 @@ fi
 pass "Docker daemon is running"
 
 # 2. Every service declared in the compose file must have a running container.
-SERVICES="$(docker compose -f "$COMPOSE_FILE" config --services 2>/dev/null)"
+SERVICES="$(compose config --services 2>/dev/null)"
 if [ -z "$SERVICES" ]; then
-    fail "No services found in $COMPOSE_FILE"
+    # Say why. A missing value and an empty file look the same otherwise.
+    fail "No services found in $COMPOSE_FILE: $(compose config --services 2>&1 >/dev/null | tail -1)"
 else
-    RUNNING="$(docker compose -f "$COMPOSE_FILE" ps --services --filter status=running 2>/dev/null)"
+    RUNNING="$(compose ps --services --filter status=running 2>/dev/null)"
     while IFS= read -r service; do
         [ -z "$service" ] && continue
         if printf '%s\n' "$RUNNING" | grep -qx "$service"; then

@@ -200,6 +200,7 @@ internal:
 gateway:
   # The frontend calls the backend through Nginx only.
   # Host process during development, Docker container at deploy time.
+  # The same image serves a frontend's static export. See knowledge/frontend/AGENTS.md.
   - name: Nginx
     version: "1.30.5"
 

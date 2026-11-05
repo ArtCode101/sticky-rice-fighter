@@ -57,6 +57,12 @@ The development shape proxies to `127.0.0.1:<port>` because the backends are hos
 processes. The container shape proxies to compose service names because everything
 runs inside the compose network. Do not copy one form of upstream into the other.
 
+Anything that is not an API call goes to the frontend through the same gateway, which
+is why the browser can call the API at a relative path. In development that is the
+Next.js dev server at `127.0.0.1:3000`. Deployed it is the frontend's compose service
+on port 3000, a second Nginx that only serves static files and is not this gateway.
+See `knowledge/frontend/AGENTS.md`.
+
 The MCP server is the same two shapes: a host process on stdio during development, a
 container on Streamable HTTP when deployed. Either way it calls **in** to this
 gateway; it is never an upstream behind it.

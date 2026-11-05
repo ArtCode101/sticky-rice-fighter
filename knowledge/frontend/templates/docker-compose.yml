@@ -1,0 +1,24 @@
+# One frontend for the definition-of-done deploy. Add one service per frontend repository.
+#
+# It publishes no port. Browsers reach it through the nginx service, the same address
+# that serves the API, so the frontend's relative /api/ calls reach the gateway.
+#
+# Required:
+#   WORKSPACE_NAME     - names the container, matching the workspace's other services.
+#   FRONTEND_IMAGE_TAG - the tag knowledge/versioning/AGENTS.md gives this image: latest
+#                        in mono layout, the frontend repository's git tag in multi layout.
+
+services:
+  frontend:
+    build:
+      context: ../../<workspace>-frontend-<user-group>
+    image: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-frontend-<user-group>:${FRONTEND_IMAGE_TAG:?FRONTEND_IMAGE_TAG is required}
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME is required}-frontend-<user-group>
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/ > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
