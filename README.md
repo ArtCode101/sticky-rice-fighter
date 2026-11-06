@@ -14,6 +14,18 @@ This README is an overview for people. Every rule lives in exactly one file, lis
 **Where each rule lives** in `AGENTS.md`; when this page and that file disagree, the
 file is right.
 
+## Workflow overview
+
+From requirement analysis and release planning to development, deployment, journey
+testing and a locked release:
+
+![Release workflow from requirement to locked release](docs/images/release-workflow.png)
+
+The complete workflow, including workspace initialization, its setup choices and
+the phase 1 repositories:
+
+![Workspace initialization through analysis and the release loop](docs/images/workspace-to-release-workflow.png)
+
 ## Install
 
 ### Requirements
