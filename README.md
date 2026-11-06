@@ -1,5 +1,9 @@
 # sticky-rice-fighter
 
+<p align="center">
+  <img src="docs/images/hero.gif" alt="sticky-rice-fighter hero animation" width="320">
+</p>
+
 An AI agent framework for building systems, designed around fast feedback: one human
 approval at the start, then agents run without human gates until the release actually
 runs on a local Docker host and a real user's journeys through it have been executed
