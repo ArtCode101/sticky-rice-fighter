@@ -1,5 +1,57 @@
 # Release Notes
 
+## 2.2.0 — 2026-11-06
+
+### Frontends are static exports
+
+- **New: `knowledge/frontend/`.** A `frontend` runs as `next dev` on Node.js on the
+  host while it is developed, and is a static export served by Nginx in its Docker
+  image, with no Node.js in the image. Only the Dockerfile sets `NEXT_OUTPUT=export`,
+  so the code is written for the export from the start. Templates: `Dockerfile`,
+  `docker-compose.yml`, `dockerignore`, `next.config.ts` and `nginx.conf`.
+- **A frontend needs no API address.** The browser calls the API at a relative path
+  and the gateway serves both, so one image runs in every environment. A value that
+  must reach the browser is embedded at build time and is public.
+- **`/srf:analyze` asks** before going on when the requirement needs a server behind
+  each page, because the image cannot serve one.
+
+### Agents keep off what is not theirs
+
+- **New: "Ports and what is not yours"** in `knowledge/local-run/AGENTS.md`. Before
+  starting anything that listens on a host port, an agent finds out what holds it. A
+  process or container of this workspace may be stopped or restarted without asking;
+  anything else, including anything whose owner cannot be established, is left alone,
+  and this workspace's own application moves to the next free port. `killall`,
+  `pkill`, unchecked `kill $(lsof ...)`, `docker stop $(docker ps -q)` and any
+  `docker ... prune` are forbidden.
+- **`local-env.sh down` is free.** It keeps the data, so an agent may run it. `destroy`
+  stays the human's decision.
+- The Coding, Journey Test and Release Agents check host ports before they start a
+  process, the test zone or the local deploy.
+
+### The local deploy runs beside the develop zone
+
+- **Its own compose project.** `local/compose.yml` now starts with
+  `name: <workspace>-deploy`. Every workspace's deploy used to be the compose project
+  `local`, so deploying one recreated another's containers.
+- **Its own name and ports.** The deploy shared container names and host ports with
+  the develop zone, so the two could not run together. It now reads the `config`
+  repository's `local-deploy/.env` (template
+  `knowledge/deployment/templates/deploy.env.example`), with `WORKSPACE_NAME`
+  `<workspace>-deploy` and a default gateway port of 28000.
+- **`done-check.sh --env-file`.** Without the deploy's values Compose could not read a
+  compose file built from the templates, so the check failed on a running system.
+  `/srf:release` always passes it now, and the script says why when it finds no
+  services.
+
+### README
+
+- A **Workflow overview** section with two diagrams: the release workflow, and the
+  full flow from workspace initialization to a locked release.
+- `bin/cli.js` is executable in the repository.
+- Plugin version `2.2.0`, in `.claude-plugin/plugin.json`, `marketplace.json` and the
+  npm package.
+
 ## 2.1.0 — 2026-11-02
 
 ### Desktop or background journeys, decided before the release
